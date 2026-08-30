@@ -135,35 +135,43 @@ jobs:
   telegram:
     name: Backend Telegram notification
     needs: [quality, sonarqube, image]
-    if: ${{ always() && github.event_name == 'push' }}
+    if: ${{ always() && (github.event_name == 'push' || github.event_name == 'pull_request') }}
     runs-on: ubuntu-latest
     env:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      TELEGRAM_TO: ${{ vars.TELEGRAM_TO }}
+      TELEGRAM_THREAD_ID: ${{ vars.TELEGRAM_THREAD_ID }}
     steps:
       - name: Notify Telegram
-        if: ${{ env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
+        if: ${{ env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_TO != '' && env.TELEGRAM_THREAD_ID != '' }}
         env:
+          EVENT_NAME: ${{ github.event_name }}
           REPOSITORY: ${{ github.repository }}
-          BRANCH: ${{ github.ref_name }}
-          SHA: ${{ github.sha }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           ACTOR: ${{ github.actor }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
           QUALITY: ${{ needs.quality.result }}
           SONARQUBE: ${{ needs.sonarqube.result }} (${{ needs.sonarqube.outputs.status }})
           IMAGE: ${{ needs.image.result }}
           IMAGE_PUSHED: ${{ needs.image.outputs.pushed }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          commit="$(printf '%s' "$COMMIT_MESSAGE" | tr '\n' ' ' | cut -c1-180)"
-          text="Backend CI push
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            subject="PR #${PR_NUMBER}: $(printf '%s' "$PR_TITLE" | tr '\n' ' ' | cut -c1-180)"
+          else
+            subject="$(printf '%s' "$COMMIT_MESSAGE" | tr '\n' ' ' | cut -c1-180)"
+          fi
+          text="Backend CI ${EVENT_NAME}
 Repository: $REPOSITORY
 Branch/tag: $BRANCH
 Commit: ${SHA:0:12} by $ACTOR
-Message: $commit
+Subject: $subject
 Quality: $QUALITY
 SonarQube: $SONARQUBE
 Image build: $IMAGE
 Docker Hub push: $IMAGE_PUSHED
 Run: $RUN_URL"
-          curl --fail --silent --show-error --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}"
+          curl --fail --silent --show-error --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_TO}" --data-urlencode "message_thread_id=${TELEGRAM_THREAD_ID}" --data-urlencode "text=${text}"
