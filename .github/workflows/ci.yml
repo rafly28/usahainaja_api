@@ -164,14 +164,5 @@ jobs:
           else
             subject="$(printf '%s' "$COMMIT_MESSAGE" | tr '\n' ' ' | cut -c1-180)"
           fi
-          text="Backend CI ${EVENT_NAME}
-          Repository: $REPOSITORY
-          Branch/tag: $BRANCH
-          Commit: ${SHA:0:12} by $ACTOR
-          Subject: $subject
-          Quality: $QUALITY
-          SonarQube: $SONARQUBE
-          Image build: $IMAGE
-          Docker Hub push: $IMAGE_PUSHED
-          Run: $RUN_URL"
+          text="$(printf 'Backend CI %s\nRepository: %s\nBranch/tag: %s\nCommit: %.12s by %s\nSubject: %s\nQuality: %s\nSonarQube: %s\nImage build: %s\nDocker Hub push: %s\nRun: %s' "$EVENT_NAME" "$REPOSITORY" "$BRANCH" "$SHA" "$ACTOR" "$subject" "$QUALITY" "$SONARQUBE" "$IMAGE" "$IMAGE_PUSHED" "$RUN_URL")"
           curl --fail --silent --show-error --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_TO}" --data-urlencode "message_thread_id=${TELEGRAM_THREAD_ID}" --data-urlencode "text=${text}"
