@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS purchase_items;
+DROP TABLE IF EXISTS purchases;
+DROP TABLE IF EXISTS sale_items;
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS cash_accounts;
+DROP TABLE IF EXISTS contacts;

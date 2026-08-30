@@ -1,0 +1,169 @@
+name: Backend CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Backend quality checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Test, vet, and format
+        run: |
+          go test -coverprofile=coverage.out ./...
+          go vet ./...
+          test -z "$(gofmt -l .)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-go-coverage
+          path: coverage.out
+          if-no-files-found: error
+
+  sonarqube:
+    name: Backend SonarQube analysis
+    needs: quality
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.config.outputs.status }}
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+    steps:
+      - name: Check SonarQube configuration
+        id: config
+        run: |
+          if [ -n "$SONAR_TOKEN" ] && [ -n "$SONAR_HOST_URL" ] && [ -n "$SONAR_PROJECT_KEY" ]; then
+            echo "status=ready" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=not_configured" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: ${{ steps.config.outputs.status == 'ready' }}
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        if: ${{ steps.config.outputs.status == 'ready' }}
+        with:
+          name: backend-go-coverage
+          path: .
+      - name: Build SonarQube arguments
+        if: ${{ steps.config.outputs.status == 'ready' }}
+        id: sonar
+        run: |
+          args="-Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.qualitygate.wait=true"
+          if [ -n "$SONAR_ORGANIZATION" ]; then
+            args="$args -Dsonar.organization=$SONAR_ORGANIZATION"
+          fi
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+      - uses: SonarSource/sonarqube-scan-action@v7
+        if: ${{ steps.config.outputs.status == 'ready' }}
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+        with:
+          args: ${{ steps.sonar.outputs.args }}
+
+  image:
+    name: Build backend image
+    needs: quality
+    runs-on: ubuntu-latest
+    outputs:
+      pushed: ${{ steps.tags.outputs.push_enabled }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Prepare tags
+        id: tags
+        env:
+          IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
+          HAS_TOKEN: ${{ secrets.DOCKERHUB_TOKEN != '' }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          SHA: ${{ github.sha }}
+        run: |
+          short_sha="${SHA:0:12}"
+          push_enabled=false
+          if [ "$REF_TYPE" = "branch" ] && [ "$REF_NAME" = "main" ] && [ -n "$IMAGE" ] && [ "$HAS_TOKEN" = "true" ]; then
+            release_tag=latest
+            push_enabled=true
+          elif [ "$REF_TYPE" = "tag" ] && [ -n "$IMAGE" ] && [ "$HAS_TOKEN" = "true" ]; then
+            release_tag="$REF_NAME"
+            push_enabled=true
+          fi
+          {
+            echo "tags<<EOF"
+            if [ "$push_enabled" = "true" ]; then
+              echo "$IMAGE:sha-$short_sha"
+              echo "$IMAGE:$release_tag"
+            else
+              echo "usahainaja-backend:ci-$short_sha"
+            fi
+            echo "EOF"
+            echo "push_enabled=$push_enabled"
+          } >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        if: ${{ steps.tags.outputs.push_enabled == 'true' }}
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ steps.tags.outputs.push_enabled == 'true' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  telegram:
+    name: Backend Telegram notification
+    needs: [quality, sonarqube, image]
+    if: ${{ always() && github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - name: Notify Telegram
+        if: ${{ env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
+        env:
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          QUALITY: ${{ needs.quality.result }}
+          SONARQUBE: ${{ needs.sonarqube.result }} (${{ needs.sonarqube.outputs.status }})
+          IMAGE: ${{ needs.image.result }}
+          IMAGE_PUSHED: ${{ needs.image.outputs.pushed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          commit="$(printf '%s' "$COMMIT_MESSAGE" | tr '\n' ' ' | cut -c1-180)"
+          text="Backend CI push
+Repository: $REPOSITORY
+Branch/tag: $BRANCH
+Commit: ${SHA:0:12} by $ACTOR
+Message: $commit
+Quality: $QUALITY
+SonarQube: $SONARQUBE
+Image build: $IMAGE
+Docker Hub push: $IMAGE_PUSHED
+Run: $RUN_URL"
+          curl --fail --silent --show-error --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}"

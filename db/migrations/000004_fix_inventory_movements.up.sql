@@ -1,0 +1,2 @@
+ALTER TABLE stock_movements DROP CONSTRAINT stock_movements_business_id_stock_adjustment_id_fkey;
+ALTER TABLE stock_movements RENAME COLUMN stock_adjustment_id TO reference_id;

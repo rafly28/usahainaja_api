@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS number_sequences;
+DROP TABLE IF EXISTS units;
+DROP TABLE IF EXISTS locations;
+DROP TABLE IF EXISTS business_members;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS businesses;
+DROP TABLE IF EXISTS users;
