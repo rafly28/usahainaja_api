@@ -183,3 +183,28 @@ func TestModuleDisabledRejectsProtectedEndpoint(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 }
+
+func TestOwnerCanUpdateBusinessConfiguration(t *testing.T) {
+	handler := testHandler("OWNER")
+	request := httptest.NewRequest(http.MethodPut, "/api/businesses/current/configuration", strings.NewReader(`{"business_type":"SERVICE","enabled_modules":["BOOKING","FINANCE"]}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-CSRF-Token", "csrf-token")
+	request.AddCookie(&http.Cookie{Name: "session", Value: "token"})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	var envelope struct {
+		Data struct {
+			BusinessType   string   `json:"business_type"`
+			EnabledModules []string `json:"enabled_modules"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if envelope.Data.BusinessType != "SERVICE" || len(envelope.Data.EnabledModules) != 2 {
+		t.Fatalf("configuration response = %#v", envelope.Data)
+	}
+}
