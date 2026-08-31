@@ -108,6 +108,12 @@ func (s *repositoryStub) CreateUnit(context.Context, string, string, NewUnit) (U
 func (s *repositoryStub) UpdateUnit(context.Context, string, string, string, string, NewUnit) (Unit, error) {
 	return Unit{}, nil
 }
+func (s *repositoryStub) ListUnitConversions(context.Context, string) ([]UnitConversion, error) {
+	return nil, nil
+}
+func (s *repositoryStub) CreateUnitConversion(context.Context, string, string, NewUnitConversion) (UnitConversion, error) {
+	return UnitConversion{}, nil
+}
 func (s *repositoryStub) ListLocations(context.Context, string) ([]Location, error) { return nil, nil }
 func (s *repositoryStub) CreateLocation(context.Context, string, string, NewLocation) (Location, error) {
 	return Location{}, nil

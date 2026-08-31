@@ -73,6 +73,12 @@ func (s *apiRepositoryStub) CreateUnit(context.Context, string, string, app.NewU
 func (s *apiRepositoryStub) UpdateUnit(context.Context, string, string, string, string, app.NewUnit) (app.Unit, error) {
 	return app.Unit{}, nil
 }
+func (s *apiRepositoryStub) ListUnitConversions(context.Context, string) ([]app.UnitConversion, error) {
+	return nil, nil
+}
+func (s *apiRepositoryStub) CreateUnitConversion(context.Context, string, string, app.NewUnitConversion) (app.UnitConversion, error) {
+	return app.UnitConversion{}, nil
+}
 func (s *apiRepositoryStub) ListLocations(context.Context, string) ([]app.Location, error) {
 	return nil, nil
 }

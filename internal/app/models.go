@@ -140,6 +140,8 @@ type Unit struct {
 }
 
 type NewUnit struct{ Name, Symbol, UnitType string }
+type UnitConversion struct{ ProductCode, FromUnitCode, ToUnitCode, Multiplier string }
+type NewUnitConversion struct{ ProductCode, FromUnitCode, ToUnitCode, Multiplier string }
 
 type NewCategory struct {
 	Name         string
@@ -222,6 +224,8 @@ type Product struct {
 	MinStock             string `json:"min_stock"`
 	IsStockTracked       bool   `json:"is_stock_tracked"`
 	Status               string `json:"status"`
+	CategoryCode         string `json:"category_code,omitempty"`
+	CategoryName         string `json:"category_name,omitempty"`
 }
 
 type NewProduct struct {
@@ -233,6 +237,7 @@ type NewProduct struct {
 	DefaultSellingPrice  string
 	MinStock             string
 	IsStockTracked       bool
+	CategoryCode         string
 }
 
 type InventoryProduct struct {

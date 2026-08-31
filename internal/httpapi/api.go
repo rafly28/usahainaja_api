@@ -66,6 +66,8 @@ func New(service *app.Service, cookieName string, cookieSecure bool) http.Handle
 			r.With(api.requireBusiness, api.requireModule(app.ModuleCatalog)).Get("/units", api.listUnits)
 			r.With(api.requireBusiness, api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/units", api.createUnit)
 			r.With(api.requireBusiness, api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Patch("/units/{code}", api.updateUnit)
+			r.With(api.requireBusiness, api.requireModule(app.ModuleCatalog)).Get("/unit-conversions", api.listUnitConversions)
+			r.With(api.requireBusiness, api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/unit-conversions", api.createUnitConversion)
 			r.With(api.requireBusiness).Get("/locations", api.listLocations)
 			r.With(api.requireBusiness, api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/locations", api.createLocation)
 			r.With(api.requireBusiness, api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Patch("/locations/{code}", api.updateLocation)
@@ -293,6 +295,7 @@ type createProductRequest struct {
 	SKU                  string      `json:"sku"`
 	Barcode              string      `json:"barcode"`
 	BaseUnitSymbol       string      `json:"base_unit_symbol"`
+	CategoryCode         string      `json:"category_code"`
 	DefaultPurchasePrice decimalJSON `json:"default_purchase_price"`
 	DefaultSellingPrice  decimalJSON `json:"default_selling_price"`
 	MinStock             decimalJSON `json:"min_stock"`
@@ -315,7 +318,7 @@ func (a *API) createProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	product, err := a.service.CreateProduct(r.Context(), businessFrom(r.Context()).ID, app.CreateProductInput{
-		Name: request.Name, SKU: request.SKU, Barcode: request.Barcode, BaseUnitSymbol: request.BaseUnitSymbol,
+		Name: request.Name, SKU: request.SKU, Barcode: request.Barcode, BaseUnitSymbol: request.BaseUnitSymbol, CategoryCode: request.CategoryCode,
 		DefaultPurchasePrice: string(request.DefaultPurchasePrice),
 		DefaultSellingPrice:  string(request.DefaultSellingPrice), MinStock: string(request.MinStock),
 		IsStockTracked: request.IsStockTracked,
@@ -334,7 +337,7 @@ func (a *API) updateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	product, err := a.service.UpdateProduct(r.Context(), businessFrom(r.Context()).ID, code, app.CreateProductInput{
-		Name: request.Name, SKU: request.SKU, Barcode: request.Barcode, BaseUnitSymbol: request.BaseUnitSymbol,
+		Name: request.Name, SKU: request.SKU, Barcode: request.Barcode, BaseUnitSymbol: request.BaseUnitSymbol, CategoryCode: request.CategoryCode,
 		DefaultPurchasePrice: string(request.DefaultPurchasePrice),
 		DefaultSellingPrice:  string(request.DefaultSellingPrice), MinStock: string(request.MinStock),
 		IsStockTracked: request.IsStockTracked,

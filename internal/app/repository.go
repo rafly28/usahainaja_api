@@ -24,6 +24,8 @@ type Repository interface {
 	ListUnits(context.Context, string) ([]Unit, error)
 	CreateUnit(context.Context, string, string, NewUnit) (Unit, error)
 	UpdateUnit(context.Context, string, string, string, string, NewUnit) (Unit, error)
+	ListUnitConversions(context.Context, string) ([]UnitConversion, error)
+	CreateUnitConversion(context.Context, string, string, NewUnitConversion) (UnitConversion, error)
 	ListLocations(context.Context, string) ([]Location, error)
 	CreateLocation(context.Context, string, string, NewLocation) (Location, error)
 	UpdateLocation(context.Context, string, string, string, string, NewLocation) (Location, error)
