@@ -16,7 +16,11 @@ func (s *Service) ListContacts(ctx context.Context, businessID string) ([]Contac
 }
 
 type CreateContactInput struct {
-	ContactType, Name, Email, Phone, Address string
+	ContactType string `json:"contact_type"`
+	Name        string `json:"name"`
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+	Address     string `json:"address"`
 }
 
 func (s *Service) CreateContact(ctx context.Context, businessID string, in CreateContactInput) (Contact, error) {

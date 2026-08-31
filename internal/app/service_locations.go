@@ -16,12 +16,17 @@ func (s *Service) ListLocations(ctx context.Context, businessID string) ([]Locat
 }
 
 type CreateLocationInput struct {
-	Name, Type, Address string
-	IsDefault           bool
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Address   string `json:"address"`
+	IsDefault bool   `json:"is_default"`
 }
 type UpdateLocationInput struct {
-	Name, Type, Address, Status string
-	IsDefault                   bool
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Address   string `json:"address"`
+	Status    string `json:"status"`
+	IsDefault bool   `json:"is_default"`
 }
 
 func (s *Service) CreateLocation(ctx context.Context, session Session, business BusinessContext, in CreateLocationInput) (Location, error) {

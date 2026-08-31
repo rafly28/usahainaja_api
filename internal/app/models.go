@@ -60,18 +60,30 @@ type NewLocation struct {
 }
 
 type PartyContact struct {
-	Type, Label, Value string
-	IsPrimary          bool `json:"is_primary"`
+	Type      string `json:"type"`
+	Label     string `json:"label,omitempty"`
+	Value     string `json:"value"`
+	IsPrimary bool   `json:"is_primary"`
 }
 type PartyAddress struct {
-	Type, Label, Address, City, Province, PostalCode string
-	IsPrimary                                        bool `json:"is_primary"`
+	Type       string `json:"type"`
+	Label      string `json:"label,omitempty"`
+	Address    string `json:"address"`
+	City       string `json:"city,omitempty"`
+	Province   string `json:"province,omitempty"`
+	PostalCode string `json:"postal_code,omitempty"`
+	IsPrimary  bool   `json:"is_primary"`
 }
 type Party struct {
-	Code, PartyType, DisplayName, LegalName, Status, Notes string
-	Relationships                                          []string       `json:"relationships"`
-	Contacts                                               []PartyContact `json:"contacts"`
-	Addresses                                              []PartyAddress `json:"addresses"`
+	Code          string         `json:"code"`
+	PartyType     string         `json:"party_type"`
+	DisplayName   string         `json:"display_name"`
+	LegalName     string         `json:"legal_name,omitempty"`
+	Status        string         `json:"status"`
+	Notes         string         `json:"notes,omitempty"`
+	Relationships []string       `json:"relationships"`
+	Contacts      []PartyContact `json:"contacts"`
+	Addresses     []PartyAddress `json:"addresses"`
 }
 type NewParty struct {
 	PartyType, DisplayName, LegalName, Notes string

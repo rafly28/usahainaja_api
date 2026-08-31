@@ -16,8 +16,10 @@ func (s *Service) ListCashAccounts(ctx context.Context, businessID string) ([]Ca
 }
 
 type CreateCashAccountInput struct {
-	Name, AccountType, Balance string
-	IsDefault                  *bool
+	Name        string `json:"name"`
+	AccountType string `json:"account_type"`
+	Balance     string `json:"balance"`
+	IsDefault   *bool  `json:"is_default"`
 }
 
 func (s *Service) CreateCashAccount(ctx context.Context, businessID string, in CreateCashAccountInput) (CashAccount, error) {

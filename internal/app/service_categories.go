@@ -19,7 +19,11 @@ func (s *Service) ListCategories(ctx context.Context, businessID, categoryType s
 	return items, nil
 }
 
-type CreateCategoryInput struct{ Name, CategoryType, ParentCode string }
+type CreateCategoryInput struct {
+	Name         string `json:"name"`
+	CategoryType string `json:"category_type"`
+	ParentCode   string `json:"parent_code"`
+}
 
 func (s *Service) CreateCategory(ctx context.Context, session Session, business BusinessContext, in CreateCategoryInput) (Category, error) {
 	if !oneOf(business.Role, "OWNER", "ADMIN") {
@@ -42,7 +46,12 @@ func (s *Service) CreateCategory(ctx context.Context, session Session, business 
 	return item, nil
 }
 
-type UpdateCategoryInput struct{ Name, CategoryType, ParentCode, Status string }
+type UpdateCategoryInput struct {
+	Name         string `json:"name"`
+	CategoryType string `json:"category_type"`
+	ParentCode   string `json:"parent_code"`
+	Status       string `json:"status"`
+}
 
 func (s *Service) UpdateCategory(ctx context.Context, session Session, business BusinessContext, code string, in UpdateCategoryInput) (Category, error) {
 	if !oneOf(business.Role, "OWNER", "ADMIN") {

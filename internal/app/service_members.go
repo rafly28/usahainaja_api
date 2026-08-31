@@ -9,8 +9,14 @@ import (
 
 var memberRoles = []string{"OWNER", "ADMIN", "CASHIER", "STAFF", "VIEWER"}
 
-type InviteBusinessMemberInput struct{ Email, Role string }
-type UpdateBusinessMemberInput struct{ Role, Status string }
+type InviteBusinessMemberInput struct {
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+type UpdateBusinessMemberInput struct {
+	Role   string `json:"role"`
+	Status string `json:"status"`
+}
 
 func (s *Service) ListBusinessMembers(ctx context.Context, business BusinessContext) ([]BusinessMember, error) {
 	if !oneOf(business.Role, "OWNER", "ADMIN") {

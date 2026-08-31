@@ -145,7 +145,12 @@ func (s *Service) ValidateCSRF(session Session, provided string) bool {
 	return subtle.ConstantTimeCompare([]byte(provided), []byte(session.CSRFToken)) == 1
 }
 
-type CreateBusinessInput struct{ Name, BusinessType, Timezone, Currency string }
+type CreateBusinessInput struct {
+	Name         string `json:"name"`
+	BusinessType string `json:"business_type"`
+	Timezone     string `json:"timezone"`
+	Currency     string `json:"currency"`
+}
 
 func (s *Service) ListBusinesses(ctx context.Context, userID string) ([]Business, error) {
 	items, err := s.repo.ListBusinesses(ctx, userID)

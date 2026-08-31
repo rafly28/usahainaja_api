@@ -6,7 +6,12 @@ import (
 	"strings"
 )
 
-type CreateUnitConversionInput struct{ ProductCode, FromUnitCode, ToUnitCode, Multiplier string }
+type CreateUnitConversionInput struct {
+	ProductCode  string `json:"product_code"`
+	FromUnitCode string `json:"from_unit_code"`
+	ToUnitCode   string `json:"to_unit_code"`
+	Multiplier   string `json:"multiplier"`
+}
 
 func (s *Service) ListUnitConversions(ctx context.Context, businessID string) ([]UnitConversion, error) {
 	items, err := s.repo.ListUnitConversions(ctx, businessID)

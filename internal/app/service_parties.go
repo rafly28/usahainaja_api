@@ -16,10 +16,13 @@ func (s *Service) ListParties(ctx context.Context, businessID string) ([]Party, 
 }
 
 type CreatePartyInput struct {
-	PartyType, DisplayName, LegalName, Notes string
-	Relationships                            []string       `json:"relationships"`
-	Contacts                                 []PartyContact `json:"contacts"`
-	Addresses                                []PartyAddress `json:"addresses"`
+	PartyType     string         `json:"party_type"`
+	DisplayName   string         `json:"display_name"`
+	LegalName     string         `json:"legal_name,omitempty"`
+	Notes         string         `json:"notes,omitempty"`
+	Relationships []string       `json:"relationships"`
+	Contacts      []PartyContact `json:"contacts"`
+	Addresses     []PartyAddress `json:"addresses"`
 }
 
 func (s *Service) CreateParty(ctx context.Context, session Session, business BusinessContext, in CreatePartyInput) (Party, error) {
@@ -41,10 +44,14 @@ func (s *Service) CreateParty(ctx context.Context, session Session, business Bus
 }
 
 type UpdatePartyInput struct {
-	PartyType, DisplayName, LegalName, Notes, Status string
-	Relationships                                    []string       `json:"relationships"`
-	Contacts                                         []PartyContact `json:"contacts"`
-	Addresses                                        []PartyAddress `json:"addresses"`
+	PartyType     string         `json:"party_type"`
+	DisplayName   string         `json:"display_name"`
+	LegalName     string         `json:"legal_name,omitempty"`
+	Notes         string         `json:"notes,omitempty"`
+	Status        string         `json:"status"`
+	Relationships []string       `json:"relationships"`
+	Contacts      []PartyContact `json:"contacts"`
+	Addresses     []PartyAddress `json:"addresses"`
 }
 
 func (s *Service) UpdateParty(ctx context.Context, session Session, business BusinessContext, code string, in UpdatePartyInput) (Party, error) {

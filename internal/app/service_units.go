@@ -15,8 +15,17 @@ func (s *Service) ListUnits(ctx context.Context, businessID string) ([]Unit, err
 	return items, nil
 }
 
-type CreateUnitInput struct{ Name, Symbol, UnitType string }
-type UpdateUnitInput struct{ Name, Symbol, UnitType, Status string }
+type CreateUnitInput struct {
+	Name     string `json:"name"`
+	Symbol   string `json:"symbol"`
+	UnitType string `json:"unit_type"`
+}
+type UpdateUnitInput struct {
+	Name     string `json:"name"`
+	Symbol   string `json:"symbol"`
+	UnitType string `json:"unit_type"`
+	Status   string `json:"status"`
+}
 
 func (s *Service) CreateUnit(ctx context.Context, session Session, business BusinessContext, in CreateUnitInput) (Unit, error) {
 	if !oneOf(business.Role, "OWNER", "ADMIN") {
