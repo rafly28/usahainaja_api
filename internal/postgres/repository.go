@@ -658,7 +658,7 @@ func (r *Repository) ListInventoryProducts(ctx context.Context, businessID strin
 func (r *Repository) ListStockMovements(ctx context.Context, businessID string) ([]app.StockMovement, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT sm.movement_type, sm.direction, sm.quantity::text, u.symbol,
-		       p.public_code, p.name, l.public_code, l.name, sm.reason, sm.occurred_at,
+		       p.public_code, p.name, l.public_code, l.name, COALESCE(sm.reason, ''), sm.occurred_at,
 		       COALESCE(us.name, '')
 		FROM stock_movements sm
 		JOIN products p ON sm.product_id = p.id
