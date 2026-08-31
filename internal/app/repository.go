@@ -21,6 +21,9 @@ type Repository interface {
 	ListUnits(context.Context, string) ([]Unit, error)
 	CreateUnit(context.Context, string, string, NewUnit) (Unit, error)
 	UpdateUnit(context.Context, string, string, string, string, NewUnit) (Unit, error)
+	ListLocations(context.Context, string) ([]Location, error)
+	CreateLocation(context.Context, string, string, NewLocation) (Location, error)
+	UpdateLocation(context.Context, string, string, string, string, NewLocation) (Location, error)
 
 	ListProducts(ctx context.Context, businessID string, search string) ([]Product, error)
 	CreateProduct(ctx context.Context, businessID string, input NewProduct) (Product, error)

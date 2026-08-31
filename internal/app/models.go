@@ -46,8 +46,17 @@ type NewSession struct {
 }
 
 type Location struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
+	Code      string `json:"code"`
+	Name      string `json:"name"`
+	Type      string `json:"type,omitempty"`
+	Address   string `json:"address,omitempty"`
+	IsDefault bool   `json:"is_default,omitempty"`
+	Status    string `json:"status,omitempty"`
+}
+
+type NewLocation struct {
+	Name, Type, Address string
+	IsDefault           bool
 }
 
 type Business struct {

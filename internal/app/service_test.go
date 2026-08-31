@@ -81,6 +81,13 @@ func (s *repositoryStub) CreateUnit(context.Context, string, string, NewUnit) (U
 func (s *repositoryStub) UpdateUnit(context.Context, string, string, string, string, NewUnit) (Unit, error) {
 	return Unit{}, nil
 }
+func (s *repositoryStub) ListLocations(context.Context, string) ([]Location, error) { return nil, nil }
+func (s *repositoryStub) CreateLocation(context.Context, string, string, NewLocation) (Location, error) {
+	return Location{}, nil
+}
+func (s *repositoryStub) UpdateLocation(context.Context, string, string, string, string, NewLocation) (Location, error) {
+	return Location{}, nil
+}
 func (r *repositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]Product, error) {
 	if r.ListProductsFunc != nil {
 		return r.ListProductsFunc(ctx, businessID)
