@@ -128,6 +128,12 @@ func (s *repositoryStub) ListSales(context.Context, string) ([]Sale, error) {
 func (s *repositoryStub) CreateSale(context.Context, string, string, NewSale) (Sale, error) {
 	return Sale{}, nil
 }
+func (s *repositoryStub) CheckoutSale(context.Context, string, string, string, PaymentInput) (Sale, error) {
+	return Sale{}, nil
+}
+func (s *repositoryStub) VoidSale(context.Context, string, string, string, string) error {
+	return nil
+}
 func (s *repositoryStub) ListPurchases(context.Context, string) ([]Purchase, error) {
 	return nil, nil
 }

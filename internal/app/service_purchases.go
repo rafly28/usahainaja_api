@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -44,17 +45,17 @@ func (s *Service) CreatePurchase(ctx context.Context, session Session, businessI
 	for i, item := range in.Items {
 		q, err := normalizeDecimal(item.Quantity, 4, 14, true)
 		if err != nil {
-			fields["items"] = "Kuantitas tidak valid pada baris " + string(rune(i+'1'))
+			fields["items"] = "Kuantitas tidak valid pada baris " + strconv.Itoa(i+1)
 		}
 		in.Items[i].Quantity = q
 		u, err := normalizeDecimal(item.UnitPrice, 2, 16, true)
 		if err != nil {
-			fields["items"] = "Harga tidak valid pada baris " + string(rune(i+'1'))
+			fields["items"] = "Harga tidak valid pada baris " + strconv.Itoa(i+1)
 		}
 		in.Items[i].UnitPrice = u
 		d, err := normalizeDecimal(item.Discount, 2, 16, false)
 		if err != nil {
-			fields["items"] = "Diskon tidak valid pada baris " + string(rune(i+'1'))
+			fields["items"] = "Diskon tidak valid pada baris " + strconv.Itoa(i+1)
 		}
 		in.Items[i].Discount = d
 	}

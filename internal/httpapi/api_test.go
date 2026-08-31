@@ -93,6 +93,12 @@ func (s *apiRepositoryStub) ListSales(context.Context, string) ([]app.Sale, erro
 func (s *apiRepositoryStub) CreateSale(context.Context, string, string, app.NewSale) (app.Sale, error) {
 	return app.Sale{}, nil
 }
+func (s *apiRepositoryStub) CheckoutSale(context.Context, string, string, string, app.PaymentInput) (app.Sale, error) {
+	return app.Sale{}, nil
+}
+func (s *apiRepositoryStub) VoidSale(context.Context, string, string, string, string) error {
+	return nil
+}
 func (s *apiRepositoryStub) ListPurchases(context.Context, string) ([]app.Purchase, error) {
 	return nil, nil
 }

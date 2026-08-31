@@ -35,6 +35,8 @@ type Repository interface {
 
 	ListSales(context.Context, string) ([]Sale, error)
 	CreateSale(context.Context, string, string, NewSale) (Sale, error)
+	CheckoutSale(ctx context.Context, businessID, userID, receiptNumber string, paymentInput PaymentInput) (Sale, error)
+	VoidSale(ctx context.Context, businessID, userID, receiptNumber, reason string) error
 
 	ListPurchases(context.Context, string) ([]Purchase, error)
 	CreatePurchase(context.Context, string, string, NewPurchase) (Purchase, error)

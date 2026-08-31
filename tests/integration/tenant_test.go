@@ -650,3 +650,108 @@ func TestPurchaseWorkflow(t *testing.T) {
 		t.Fatalf("expected 201 for pay purchase, got %d", resp.StatusCode)
 	}
 }
+
+func TestSalesCheckoutConcurrency(t *testing.T) {
+	_, handler := setupApp(t)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	client := server.Client()
+	csrf := registerUser(t, client, server.URL, "User G", "g@test.com", "password")
+	biz := createBusiness(t, client, server.URL, csrf, "Business G")
+	switchBusiness(t, client, server.URL, csrf, biz)
+
+	// Create Product
+	prodBody := strings.NewReader(`{"name":"Product G", "sku":"", "barcode":"", "base_unit_symbol":"", "default_purchase_price":"0", "default_selling_price":"1000", "min_stock":"0", "is_stock_tracked":true}`)
+	req, _ := http.NewRequest(http.MethodPost, server.URL+"/api/products", prodBody)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", csrf)
+	resp, _ := client.Do(req)
+	var prodResp struct {
+		Data struct {
+			Code string `json:"code"`
+		} `json:"data"`
+	}
+	json.NewDecoder(resp.Body).Decode(&prodResp)
+	resp.Body.Close()
+
+	// Cash Account
+	cashBody := `{"Name":"Kas","AccountType":"CASH","Balance":"10000","IsDefault":true}`
+	req, _ = http.NewRequest(http.MethodPost, server.URL+"/api/cash-accounts", strings.NewReader(cashBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", csrf)
+	resp, _ = client.Do(req)
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Failed to create cash account: %d %s", resp.StatusCode, string(b))
+	}
+	var cashResp struct {
+		Data struct {
+			Code string `json:"code"`
+		} `json:"data"`
+	}
+	json.NewDecoder(resp.Body).Decode(&cashResp)
+	resp.Body.Close()
+
+	// Opening Stock (1 unit)
+	osBody := `{"product_code":"` + prodResp.Data.Code + `", "location_code":"LOC-DEFAULT", "quantity":"1", "reason":""}`
+	req, _ = http.NewRequest(http.MethodPost, server.URL+"/api/inventory/opening-stock", strings.NewReader(osBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", csrf)
+	resp, _ = client.Do(req)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Failed to create opening stock: %d %s", resp.StatusCode, string(b))
+	}
+	resp.Body.Close()
+
+	// Create 2 Draft Sales for 1 unit each
+	saleReq := `{"location_code":"LOC-DEFAULT", "customer_code":"", "payment_status":"UNPAID", "discount_total":"0", "tax_total":"0", "items":[{"product_code":"` + prodResp.Data.Code + `", "quantity":"1", "unit_price":"1000", "discount":"0"}]}`
+	req, _ = http.NewRequest(http.MethodPost, server.URL+"/api/sales", strings.NewReader(saleReq))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", csrf)
+	resp, _ = client.Do(req)
+	if resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Failed to create sale 1: %d %s", resp.StatusCode, string(b))
+	}
+	var sale1 struct { Data struct { ReceiptNumber string `json:"receipt_number"` } `json:"data"` }
+	json.NewDecoder(resp.Body).Decode(&sale1)
+	resp.Body.Close()
+
+	req, _ = http.NewRequest(http.MethodPost, server.URL+"/api/sales", strings.NewReader(saleReq))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", csrf)
+	resp, _ = client.Do(req)
+	if resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Failed to create sale 2: %d %s", resp.StatusCode, string(b))
+	}
+	var sale2 struct { Data struct { ReceiptNumber string `json:"receipt_number"` } `json:"data"` }
+	json.NewDecoder(resp.Body).Decode(&sale2)
+	resp.Body.Close()
+
+	// Concurrent Checkout
+	errs := make(chan struct{ Code int; Body string }, 2)
+	checkout := func(receipt string) {
+		payBody := `{"cash_account_code":"` + cashResp.Data.Code + `", "amount":"1000"}`
+		req, _ := http.NewRequest(http.MethodPost, server.URL+"/api/sales/"+receipt+"/checkout", strings.NewReader(payBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-CSRF-Token", csrf)
+		resp, _ := client.Do(req)
+		body, _ := io.ReadAll(resp.Body)
+		errs <- struct{ Code int; Body string }{resp.StatusCode, string(body)}
+		resp.Body.Close()
+	}
+
+	go checkout(sale1.Data.ReceiptNumber)
+	go checkout(sale2.Data.ReceiptNumber)
+
+	res1 := <-errs
+	res2 := <-errs
+
+	if (res1.Code == http.StatusOK && res2.Code == http.StatusOK) || (res1.Code != http.StatusOK && res2.Code != http.StatusOK) {
+		t.Fatalf("expected one checkout to succeed and one to fail due to stock, got %d (%s) and %d (%s)", res1.Code, res1.Body, res2.Code, res2.Body)
+	}
+}
+

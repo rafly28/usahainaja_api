@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -43,17 +44,17 @@ func (s *Service) CreateSale(ctx context.Context, session Session, businessID st
 	for i, item := range in.Items {
 		q, err := normalizeDecimal(item.Quantity, 4, 14, true)
 		if err != nil {
-			fields["items"] = "Kuantitas tidak valid pada baris " + string(rune(i+'1'))
+			fields["items"] = "Kuantitas tidak valid pada baris " + strconv.Itoa(i+1)
 		}
 		in.Items[i].Quantity = q
 		u, err := normalizeDecimal(item.UnitPrice, 2, 16, true)
 		if err != nil {
-			fields["items"] = "Harga tidak valid pada baris " + string(rune(i+'1'))
+			fields["items"] = "Harga tidak valid pada baris " + strconv.Itoa(i+1)
 		}
 		in.Items[i].UnitPrice = u
 		d, err := normalizeDecimal(item.Discount, 2, 16, false)
 		if err != nil {
-			fields["items"] = "Diskon tidak valid pada baris " + string(rune(i+'1'))
+			fields["items"] = "Diskon tidak valid pada baris " + strconv.Itoa(i+1)
 		}
 		in.Items[i].Discount = d
 	}
@@ -76,4 +77,54 @@ func (s *Service) CreateSale(ctx context.Context, session Session, businessID st
 		return Sale{}, &Error{Code: "INTERNAL_ERROR", Message: "Tidak dapat memproses penjualan.", Cause: err}
 	}
 	return sale, nil
+}
+
+func (s *Service) CheckoutSale(ctx context.Context, session Session, businessID, receiptNumber string, paymentInput PaymentInput) (Sale, error) {
+	fields := map[string]string{}
+	paymentInput.CashAccountCode = strings.TrimSpace(paymentInput.CashAccountCode)
+	if paymentInput.CashAccountCode == "" {
+		fields["cash_account_code"] = "Akun kas harus diisi."
+	}
+	amount, err := decimalOrZero(paymentInput.Amount, 2, 16)
+	if err != nil {
+		fields["amount"] = "Jumlah pembayaran tidak valid."
+	}
+	paymentInput.Amount = amount
+
+	if len(fields) != 0 {
+		return Sale{}, validationError(fields)
+	}
+
+	sale, err := s.repo.CheckoutSale(ctx, businessID, session.UserID, receiptNumber, paymentInput)
+	if errors.Is(err, ErrNotFound) {
+		return Sale{}, &Error{Code: "NOT_FOUND", Message: "Penjualan tidak ditemukan."}
+	}
+	if err != nil {
+		var appErr *Error
+		if errors.As(err, &appErr) {
+			return Sale{}, err
+		}
+		return Sale{}, &Error{Code: "INTERNAL_ERROR", Message: "Tidak dapat checkout penjualan.", Cause: err}
+	}
+	return sale, nil
+}
+
+func (s *Service) VoidSale(ctx context.Context, session Session, businessID, receiptNumber, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return validationError(map[string]string{"reason": "Alasan pembatalan harus diisi."})
+	}
+	
+	err := s.repo.VoidSale(ctx, businessID, session.UserID, receiptNumber, reason)
+	if errors.Is(err, ErrNotFound) {
+		return &Error{Code: "NOT_FOUND", Message: "Penjualan tidak ditemukan."}
+	}
+	if err != nil {
+		var appErr *Error
+		if errors.As(err, &appErr) {
+			return err
+		}
+		return &Error{Code: "INTERNAL_ERROR", Message: "Tidak dapat membatalkan penjualan.", Cause: err}
+	}
+	return nil
 }

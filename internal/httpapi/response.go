@@ -62,7 +62,7 @@ func statusForCode(code string) int {
 		return http.StatusForbidden
 	case "PRODUCT_OR_LOCATION_NOT_FOUND", "PRODUCT_NOT_FOUND", "NOT_FOUND":
 		return http.StatusNotFound
-	case "ACTIVE_BUSINESS_REQUIRED", "EMAIL_ALREADY_EXISTS", "PRODUCT_CONFLICT", "OPENING_STOCK_ALREADY_RECORDED":
+	case "ACTIVE_BUSINESS_REQUIRED", "EMAIL_ALREADY_EXISTS", "PRODUCT_CONFLICT", "OPENING_STOCK_ALREADY_RECORDED", "INSUFFICIENT_STOCK", "INVALID_STATE":
 		return http.StatusConflict
 	default:
 		return http.StatusInternalServerError

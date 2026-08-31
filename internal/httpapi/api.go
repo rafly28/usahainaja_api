@@ -74,7 +74,9 @@ func New(service *app.Service, cookieName string, cookieSecure bool) http.Handle
 			r.With(api.requireModule(app.ModuleFinance), api.requireCSRF).Post("/cash-accounts", api.createCashAccount)
 
 			r.With(api.requireModule(app.ModuleSales)).Get("/sales", api.listSales)
-			r.With(api.requireModule(app.ModuleSales), api.requireCSRF).Post("/sales", api.createSale)
+			r.With(api.requireModule(app.ModuleSales), api.requireCSRF, api.requireRole("OWNER", "ADMIN", "CASHIER")).Post("/sales", api.createSale)
+			r.With(api.requireModule(app.ModuleSales), api.requireCSRF, api.requireRole("OWNER", "ADMIN", "CASHIER")).Post("/sales/{number}/checkout", api.checkoutSale)
+			r.With(api.requireModule(app.ModuleSales), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/sales/{number}/void", api.voidSale)
 
 			r.With(api.requireModule(app.ModulePurchase)).Get("/purchases", api.listPurchases)
 			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF).Post("/purchases", api.createPurchase)
