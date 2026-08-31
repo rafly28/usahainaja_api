@@ -79,6 +79,9 @@ func (s *apiRepositoryStub) ListParties(context.Context, string) ([]app.Party, e
 func (s *apiRepositoryStub) CreateParty(context.Context, string, string, app.NewParty) (app.Party, error) {
 	return app.Party{}, nil
 }
+func (s *apiRepositoryStub) UpdateParty(context.Context, string, string, string, string, app.NewParty) (app.Party, error) {
+	return app.Party{}, nil
+}
 func (r *apiRepositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]app.Product, error) {
 	return []app.Product{}, nil
 }

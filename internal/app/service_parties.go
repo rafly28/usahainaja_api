@@ -39,6 +39,45 @@ func (s *Service) CreateParty(ctx context.Context, session Session, business Bus
 	}
 	return item, nil
 }
+
+type UpdatePartyInput struct {
+	PartyType, DisplayName, LegalName, Notes, Status string
+	Relationships                                    []string       `json:"relationships"`
+	Contacts                                         []PartyContact `json:"contacts"`
+	Addresses                                        []PartyAddress `json:"addresses"`
+}
+
+func (s *Service) UpdateParty(ctx context.Context, session Session, business BusinessContext, code string, in UpdatePartyInput) (Party, error) {
+	if !oneOf(business.Role, "OWNER", "ADMIN") {
+		return Party{}, &Error{Code: "PERMISSION_DENIED", Message: "Anda tidak memiliki izin untuk mengelola party."}
+	}
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if !codePattern.MatchString(code) {
+		return Party{}, validationError(map[string]string{"code": "Kode party tidak valid."})
+	}
+	input, err := normalizeParty(CreatePartyInput{
+		PartyType: in.PartyType, DisplayName: in.DisplayName, LegalName: in.LegalName, Notes: in.Notes,
+		Relationships: in.Relationships, Contacts: in.Contacts, Addresses: in.Addresses,
+	})
+	if err != nil {
+		return Party{}, err
+	}
+	status := strings.ToUpper(strings.TrimSpace(in.Status))
+	if status == "" {
+		status = "ACTIVE"
+	}
+	if !oneOf(status, "ACTIVE", "INACTIVE") {
+		return Party{}, validationError(map[string]string{"status": "Status party tidak valid."})
+	}
+	item, err := s.repo.UpdateParty(ctx, business.ID, session.UserID, code, status, input)
+	if errors.Is(err, ErrNotFound) {
+		return Party{}, &Error{Code: "PARTY_NOT_FOUND", Message: "Party tidak ditemukan."}
+	}
+	if err != nil {
+		return Party{}, &Error{Code: "INTERNAL_ERROR", Message: "Tidak dapat mengubah party.", Cause: err}
+	}
+	return item, nil
+}
 func normalizeParty(in CreatePartyInput) (NewParty, error) {
 	p := NewParty{PartyType: strings.ToUpper(strings.TrimSpace(in.PartyType)), DisplayName: strings.TrimSpace(in.DisplayName), LegalName: strings.TrimSpace(in.LegalName), Notes: strings.TrimSpace(in.Notes), Contacts: in.Contacts, Addresses: in.Addresses}
 	fields := map[string]string{}

@@ -92,6 +92,9 @@ func (s *repositoryStub) ListParties(context.Context, string) ([]Party, error) {
 func (s *repositoryStub) CreateParty(context.Context, string, string, NewParty) (Party, error) {
 	return Party{}, nil
 }
+func (s *repositoryStub) UpdateParty(context.Context, string, string, string, string, NewParty) (Party, error) {
+	return Party{}, nil
+}
 func (r *repositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]Product, error) {
 	if r.ListProductsFunc != nil {
 		return r.ListProductsFunc(ctx, businessID)
