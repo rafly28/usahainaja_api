@@ -48,6 +48,15 @@ func (s *apiRepositoryStub) SwitchBusiness(context.Context, string, string, stri
 func (s *apiRepositoryStub) UpdateBusinessConfiguration(context.Context, string, string, string, []string) error {
 	return nil
 }
+func (s *apiRepositoryStub) ListCategories(context.Context, string, string) ([]app.Category, error) {
+	return nil, nil
+}
+func (s *apiRepositoryStub) CreateCategory(context.Context, string, string, app.NewCategory) (app.Category, error) {
+	return app.Category{}, nil
+}
+func (s *apiRepositoryStub) UpdateCategory(context.Context, string, string, string, string, app.NewCategory) (app.Category, error) {
+	return app.Category{}, nil
+}
 func (r *apiRepositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]app.Product, error) {
 	return []app.Product{}, nil
 }

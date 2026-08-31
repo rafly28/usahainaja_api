@@ -65,6 +65,15 @@ func (s *repositoryStub) UpdateBusinessConfiguration(ctx context.Context, busine
 	}
 	return nil
 }
+func (s *repositoryStub) ListCategories(context.Context, string, string) ([]Category, error) {
+	return nil, nil
+}
+func (s *repositoryStub) CreateCategory(context.Context, string, string, NewCategory) (Category, error) {
+	return Category{}, nil
+}
+func (s *repositoryStub) UpdateCategory(context.Context, string, string, string, string, NewCategory) (Category, error) {
+	return Category{}, nil
+}
 func (r *repositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]Product, error) {
 	if r.ListProductsFunc != nil {
 		return r.ListProductsFunc(ctx, businessID)
@@ -273,5 +282,18 @@ func TestUpdateBusinessModulesUsesValidatedModuleConfiguration(t *testing.T) {
 	var appErr *Error
 	if !errors.As(err, &appErr) || appErr.Code != "PERMISSION_DENIED" {
 		t.Fatalf("viewer update error = %#v", err)
+	}
+}
+
+func TestNormalizeCategoryInput(t *testing.T) {
+	category, err := normalizeCategoryInput(CreateCategoryInput{Name: "  Minuman ", CategoryType: "product", ParentCode: "cat-000001"})
+	if err != nil {
+		t.Fatalf("normalizeCategoryInput() error = %v", err)
+	}
+	if category.Name != "Minuman" || category.CategoryType != "PRODUCT" || category.ParentCode != "CAT-000001" {
+		t.Fatalf("normalized category = %#v", category)
+	}
+	if _, err := normalizeCategoryInput(CreateCategoryInput{Name: "", CategoryType: "unknown"}); err == nil {
+		t.Fatal("expected invalid category input to be rejected")
 	}
 }

@@ -85,6 +85,20 @@ type NewBusiness struct {
 	EnabledModules []string
 }
 
+type Category struct {
+	Code         string  `json:"code"`
+	Name         string  `json:"name"`
+	CategoryType string  `json:"category_type"`
+	ParentCode   *string `json:"parent_code,omitempty"`
+	Status       string  `json:"status"`
+}
+
+type NewCategory struct {
+	Name         string
+	CategoryType string
+	ParentCode   string
+}
+
 const (
 	ModuleCatalog   = "CATALOG"
 	ModuleInventory = "INVENTORY"

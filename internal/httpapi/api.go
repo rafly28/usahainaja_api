@@ -57,6 +57,9 @@ func New(service *app.Service, cookieName string, cookieSecure bool) http.Handle
 			r.With(api.requireCSRF).Post("/businesses/", api.createBusiness)
 			r.With(api.requireBusiness).Get("/businesses/current", api.currentBusiness)
 			r.With(api.requireBusiness, api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Put("/businesses/current/configuration", api.updateBusinessConfiguration)
+			r.With(api.requireBusiness, api.requireModule(app.ModuleCatalog)).Get("/categories", api.listCategories)
+			r.With(api.requireBusiness, api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/categories", api.createCategory)
+			r.With(api.requireBusiness, api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Patch("/categories/{code}", api.updateCategory)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(api.requireSession)
