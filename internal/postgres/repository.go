@@ -369,9 +369,10 @@ func (r *Repository) ListProducts(ctx context.Context, businessID string, search
 	query := `
 		SELECT p.public_code, p.name, COALESCE(p.sku, ''), COALESCE(p.barcode, ''), u.symbol,
 		       p.default_purchase_price::text, p.default_selling_price::text, p.min_stock::text,
-		       p.is_stock_tracked, p.status
+		       p.is_stock_tracked, p.status, COALESCE(c.public_code,''), COALESCE(c.name,'')
 		FROM products p
 		JOIN units u ON u.id = p.base_unit_id AND u.business_id = p.business_id
+		LEFT JOIN categories c ON c.id = p.category_id AND c.business_id = p.business_id
 		WHERE p.business_id = $1`
 	args := []any{businessID}
 	if search != "" {
@@ -390,7 +391,7 @@ func (r *Repository) ListProducts(ctx context.Context, businessID string, search
 		var item app.Product
 		if err := rows.Scan(&item.Code, &item.Name, &item.SKU, &item.Barcode, &item.UnitSymbol,
 			&item.DefaultPurchasePrice, &item.DefaultSellingPrice, &item.MinStock,
-			&item.IsStockTracked, &item.Status); err != nil {
+			&item.IsStockTracked, &item.Status, &item.CategoryCode, &item.CategoryName); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -416,13 +417,19 @@ func (r *Repository) CreateProduct(ctx context.Context, businessID string, input
 		return app.Product{}, err
 	}
 	defer rollback(ctx, tx)
-	var unitID, unitSymbol string
+	var unitID, unitSymbol, categoryID string
 	err = tx.QueryRow(ctx, `
 		SELECT id::text, symbol FROM units
 		WHERE business_id = $1 AND upper(symbol) = upper($2)`, businessID, input.BaseUnitSymbol,
 	).Scan(&unitID, &unitSymbol)
 	if err != nil {
 		return app.Product{}, mapError(err)
+	}
+	if input.CategoryCode != "" {
+		err = tx.QueryRow(ctx, `SELECT id::text FROM categories WHERE business_id=$1 AND public_code=$2 AND category_type='PRODUCT' AND status='ACTIVE'`, businessID, input.CategoryCode).Scan(&categoryID)
+		if err != nil {
+			return app.Product{}, mapError(err)
+		}
 	}
 	code, err := nextNumber(ctx, tx, businessID, "PRODUCT")
 	if err != nil {
@@ -432,11 +439,11 @@ func (r *Repository) CreateProduct(ctx context.Context, businessID string, input
 	err = tx.QueryRow(ctx, `
 		INSERT INTO products (
 			business_id, public_code, base_unit_id, name, sku, barcode,
-			default_purchase_price, default_selling_price, min_stock, is_stock_tracked
-		) VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9, $10)
+			default_purchase_price, default_selling_price, min_stock, is_stock_tracked, category_id
+		) VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9, $10, NULLIF($11,'')::uuid)
 		RETURNING default_purchase_price::text, default_selling_price::text, min_stock::text`,
 		businessID, code, unitID, input.Name, input.SKU, input.Barcode,
-		purchase, selling, minStock, input.IsStockTracked,
+		purchase, selling, minStock, input.IsStockTracked, categoryID,
 	).Scan(&item.DefaultPurchasePrice, &item.DefaultSellingPrice, &item.MinStock)
 	if err != nil {
 		return app.Product{}, mapError(err)
@@ -460,7 +467,7 @@ func (r *Repository) UpdateProduct(ctx context.Context, businessID, code string,
 	if err != nil {
 		return app.Product{}, err
 	}
-	var unitID, unitSymbol string
+	var unitID, unitSymbol, categoryID string
 	err = r.pool.QueryRow(ctx, `
 		SELECT id::text, symbol FROM units
 		WHERE business_id = $1 AND upper(symbol) = upper($2)`, businessID, input.BaseUnitSymbol,
@@ -468,16 +475,22 @@ func (r *Repository) UpdateProduct(ctx context.Context, businessID, code string,
 	if err != nil {
 		return app.Product{}, mapError(err)
 	}
+	if input.CategoryCode != "" {
+		err = r.pool.QueryRow(ctx, `SELECT id::text FROM categories WHERE business_id=$1 AND public_code=$2 AND category_type='PRODUCT' AND status='ACTIVE'`, businessID, input.CategoryCode).Scan(&categoryID)
+		if err != nil {
+			return app.Product{}, mapError(err)
+		}
+	}
 
 	item := app.Product{Code: code, Name: input.Name, SKU: input.SKU, Barcode: input.Barcode, UnitSymbol: unitSymbol, IsStockTracked: input.IsStockTracked, Status: "ACTIVE"}
 	err = r.pool.QueryRow(ctx, `
 		UPDATE products SET
 			base_unit_id = $1, name = $2, sku = NULLIF($3, ''), barcode = NULLIF($4, ''),
-			default_purchase_price = $5, default_selling_price = $6, min_stock = $7, is_stock_tracked = $8
-		WHERE business_id = $9 AND public_code = $10 AND status = 'ACTIVE'
+		default_purchase_price = $5, default_selling_price = $6, min_stock = $7, is_stock_tracked = $8, category_id = NULLIF($9,'')::uuid
+		WHERE business_id = $10 AND public_code = $11 AND status = 'ACTIVE'
 		RETURNING default_purchase_price::text, default_selling_price::text, min_stock::text`,
 		unitID, input.Name, input.SKU, input.Barcode,
-		purchase, selling, minStock, input.IsStockTracked,
+		purchase, selling, minStock, input.IsStockTracked, categoryID,
 		businessID, code,
 	).Scan(&item.DefaultPurchasePrice, &item.DefaultSellingPrice, &item.MinStock)
 	if err != nil {

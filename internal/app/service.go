@@ -257,7 +257,7 @@ func (s *Service) SwitchBusiness(ctx context.Context, session Session, businessC
 }
 
 type CreateProductInput struct {
-	Name, SKU, Barcode, BaseUnitSymbol                  string
+	Name, SKU, Barcode, BaseUnitSymbol, CategoryCode    string
 	DefaultPurchasePrice, DefaultSellingPrice, MinStock string
 	IsStockTracked                                      *bool
 }
@@ -288,6 +288,10 @@ func (s *Service) CreateProduct(ctx context.Context, businessID string, in Creat
 	if unit == "" {
 		unit = "PCS"
 	}
+	categoryCode := strings.ToUpper(strings.TrimSpace(in.CategoryCode))
+	if categoryCode != "" && !codePattern.MatchString(categoryCode) {
+		fields["category_code"] = "Kode kategori tidak valid."
+	}
 	purchase, err := decimalOrZero(in.DefaultPurchasePrice, 2, 16)
 	if err != nil {
 		fields["default_purchase_price"] = err.Error()
@@ -310,7 +314,7 @@ func (s *Service) CreateProduct(ctx context.Context, businessID string, in Creat
 	product, err := s.repo.CreateProduct(ctx, businessID, NewProduct{
 		Name: name, SKU: sku, Barcode: barcode, BaseUnitSymbol: unit,
 		DefaultPurchasePrice: purchase, DefaultSellingPrice: selling, MinStock: minStock,
-		IsStockTracked: tracked,
+		IsStockTracked: tracked, CategoryCode: categoryCode,
 	})
 	if errors.Is(err, ErrNotFound) {
 		return Product{}, validationError(map[string]string{"base_unit_symbol": "Satuan tidak ditemukan."})
@@ -342,6 +346,10 @@ func (s *Service) UpdateProduct(ctx context.Context, businessID string, code str
 	if unit == "" {
 		unit = "PCS"
 	}
+	categoryCode := strings.ToUpper(strings.TrimSpace(in.CategoryCode))
+	if categoryCode != "" && !codePattern.MatchString(categoryCode) {
+		fields["category_code"] = "Kode kategori tidak valid."
+	}
 	purchase, err := decimalOrZero(in.DefaultPurchasePrice, 2, 16)
 	if err != nil {
 		fields["default_purchase_price"] = err.Error()
@@ -364,7 +372,7 @@ func (s *Service) UpdateProduct(ctx context.Context, businessID string, code str
 	product, err := s.repo.UpdateProduct(ctx, businessID, code, NewProduct{
 		Name: name, SKU: sku, Barcode: barcode, BaseUnitSymbol: unit,
 		DefaultPurchasePrice: purchase, DefaultSellingPrice: selling, MinStock: minStock,
-		IsStockTracked: tracked,
+		IsStockTracked: tracked, CategoryCode: categoryCode,
 	})
 	if errors.Is(err, ErrNotFound) {
 		return Product{}, &Error{Code: "PRODUCT_NOT_FOUND", Message: "Produk tidak ditemukan atau satuan tidak valid."}

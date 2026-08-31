@@ -48,6 +48,55 @@ func (s *apiRepositoryStub) SwitchBusiness(context.Context, string, string, stri
 func (s *apiRepositoryStub) UpdateBusinessConfiguration(context.Context, string, string, string, []string) error {
 	return nil
 }
+func (s *apiRepositoryStub) ListBusinessMembers(context.Context, string) ([]app.BusinessMember, error) {
+	return nil, nil
+}
+func (s *apiRepositoryStub) InviteBusinessMember(context.Context, string, string, string, string) (app.BusinessMember, error) {
+	return app.BusinessMember{}, nil
+}
+func (s *apiRepositoryStub) UpdateBusinessMember(context.Context, string, string, string, string, string, string) (app.BusinessMember, error) {
+	return app.BusinessMember{}, nil
+}
+func (s *apiRepositoryStub) ListCategories(context.Context, string, string) ([]app.Category, error) {
+	return nil, nil
+}
+func (s *apiRepositoryStub) CreateCategory(context.Context, string, string, app.NewCategory) (app.Category, error) {
+	return app.Category{}, nil
+}
+func (s *apiRepositoryStub) UpdateCategory(context.Context, string, string, string, string, app.NewCategory) (app.Category, error) {
+	return app.Category{}, nil
+}
+func (s *apiRepositoryStub) ListUnits(context.Context, string) ([]app.Unit, error) { return nil, nil }
+func (s *apiRepositoryStub) CreateUnit(context.Context, string, string, app.NewUnit) (app.Unit, error) {
+	return app.Unit{}, nil
+}
+func (s *apiRepositoryStub) UpdateUnit(context.Context, string, string, string, string, app.NewUnit) (app.Unit, error) {
+	return app.Unit{}, nil
+}
+func (s *apiRepositoryStub) ListUnitConversions(context.Context, string) ([]app.UnitConversion, error) {
+	return nil, nil
+}
+func (s *apiRepositoryStub) CreateUnitConversion(context.Context, string, string, app.NewUnitConversion) (app.UnitConversion, error) {
+	return app.UnitConversion{}, nil
+}
+func (s *apiRepositoryStub) ListLocations(context.Context, string) ([]app.Location, error) {
+	return nil, nil
+}
+func (s *apiRepositoryStub) CreateLocation(context.Context, string, string, app.NewLocation) (app.Location, error) {
+	return app.Location{}, nil
+}
+func (s *apiRepositoryStub) UpdateLocation(context.Context, string, string, string, string, app.NewLocation) (app.Location, error) {
+	return app.Location{}, nil
+}
+func (s *apiRepositoryStub) ListParties(context.Context, string) ([]app.Party, error) {
+	return nil, nil
+}
+func (s *apiRepositoryStub) CreateParty(context.Context, string, string, app.NewParty) (app.Party, error) {
+	return app.Party{}, nil
+}
+func (s *apiRepositoryStub) UpdateParty(context.Context, string, string, string, string, app.NewParty) (app.Party, error) {
+	return app.Party{}, nil
+}
 func (r *apiRepositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]app.Product, error) {
 	return []app.Product{}, nil
 }

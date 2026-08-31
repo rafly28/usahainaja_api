@@ -65,6 +65,69 @@ func (s *repositoryStub) UpdateBusinessConfiguration(ctx context.Context, busine
 	}
 	return nil
 }
+func (s *repositoryStub) ListBusinessMembers(context.Context, string) ([]BusinessMember, error) {
+	return nil, nil
+}
+func (s *repositoryStub) InviteBusinessMember(context.Context, string, string, string, string) (BusinessMember, error) {
+	return BusinessMember{}, nil
+}
+func (s *repositoryStub) UpdateBusinessMember(context.Context, string, string, string, string, string, string) (BusinessMember, error) {
+	return BusinessMember{}, nil
+}
+
+func TestInviteBusinessMemberPreventsAdminAssigningOwner(t *testing.T) {
+	service := NewService(&repositoryStub{}, time.Hour, bcrypt.MinCost)
+	_, err := service.InviteBusinessMember(context.Background(), Session{UserID: "user-1"}, BusinessContext{ID: "business-1", Role: "ADMIN"}, InviteBusinessMemberInput{Email: "member@example.com", Role: "OWNER"})
+	var appErr *Error
+	if !errors.As(err, &appErr) || appErr.Code != "VALIDATION_ERROR" {
+		t.Fatalf("expected validation error, got %#v", err)
+	}
+}
+
+func TestUpdateBusinessMemberRejectsInvalidStatus(t *testing.T) {
+	service := NewService(&repositoryStub{}, time.Hour, bcrypt.MinCost)
+	_, err := service.UpdateBusinessMember(context.Background(), Session{UserID: "user-1"}, BusinessContext{ID: "business-1", Role: "OWNER"}, "USR-000001", UpdateBusinessMemberInput{Role: "VIEWER", Status: "DELETED"})
+	var appErr *Error
+	if !errors.As(err, &appErr) || appErr.Code != "VALIDATION_ERROR" {
+		t.Fatalf("expected validation error, got %#v", err)
+	}
+}
+func (s *repositoryStub) ListCategories(context.Context, string, string) ([]Category, error) {
+	return nil, nil
+}
+func (s *repositoryStub) CreateCategory(context.Context, string, string, NewCategory) (Category, error) {
+	return Category{}, nil
+}
+func (s *repositoryStub) UpdateCategory(context.Context, string, string, string, string, NewCategory) (Category, error) {
+	return Category{}, nil
+}
+func (s *repositoryStub) ListUnits(context.Context, string) ([]Unit, error) { return nil, nil }
+func (s *repositoryStub) CreateUnit(context.Context, string, string, NewUnit) (Unit, error) {
+	return Unit{}, nil
+}
+func (s *repositoryStub) UpdateUnit(context.Context, string, string, string, string, NewUnit) (Unit, error) {
+	return Unit{}, nil
+}
+func (s *repositoryStub) ListUnitConversions(context.Context, string) ([]UnitConversion, error) {
+	return nil, nil
+}
+func (s *repositoryStub) CreateUnitConversion(context.Context, string, string, NewUnitConversion) (UnitConversion, error) {
+	return UnitConversion{}, nil
+}
+func (s *repositoryStub) ListLocations(context.Context, string) ([]Location, error) { return nil, nil }
+func (s *repositoryStub) CreateLocation(context.Context, string, string, NewLocation) (Location, error) {
+	return Location{}, nil
+}
+func (s *repositoryStub) UpdateLocation(context.Context, string, string, string, string, NewLocation) (Location, error) {
+	return Location{}, nil
+}
+func (s *repositoryStub) ListParties(context.Context, string) ([]Party, error) { return nil, nil }
+func (s *repositoryStub) CreateParty(context.Context, string, string, NewParty) (Party, error) {
+	return Party{}, nil
+}
+func (s *repositoryStub) UpdateParty(context.Context, string, string, string, string, NewParty) (Party, error) {
+	return Party{}, nil
+}
 func (r *repositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]Product, error) {
 	if r.ListProductsFunc != nil {
 		return r.ListProductsFunc(ctx, businessID)
@@ -279,5 +342,31 @@ func TestUpdateBusinessModulesUsesValidatedModuleConfiguration(t *testing.T) {
 	var appErr *Error
 	if !errors.As(err, &appErr) || appErr.Code != "PERMISSION_DENIED" {
 		t.Fatalf("viewer update error = %#v", err)
+	}
+}
+
+func TestNormalizeCategoryInput(t *testing.T) {
+	category, err := normalizeCategoryInput(CreateCategoryInput{Name: "  Minuman ", CategoryType: "product", ParentCode: "cat-000001"})
+	if err != nil {
+		t.Fatalf("normalizeCategoryInput() error = %v", err)
+	}
+	if category.Name != "Minuman" || category.CategoryType != "PRODUCT" || category.ParentCode != "CAT-000001" {
+		t.Fatalf("normalized category = %#v", category)
+	}
+	if _, err := normalizeCategoryInput(CreateCategoryInput{Name: "", CategoryType: "unknown"}); err == nil {
+		t.Fatal("expected invalid category input to be rejected")
+	}
+}
+
+func TestNormalizeUnitInput(t *testing.T) {
+	unit, err := normalizeUnitInput(" Kilogram ", " kg ", "weight")
+	if err != nil {
+		t.Fatalf("normalizeUnitInput() error = %v", err)
+	}
+	if unit.Name != "Kilogram" || unit.Symbol != "KG" || unit.UnitType != "WEIGHT" {
+		t.Fatalf("normalized unit = %#v", unit)
+	}
+	if _, err := normalizeUnitInput("", "", "invalid"); err == nil {
+		t.Fatal("expected invalid unit input")
 	}
 }

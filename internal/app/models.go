@@ -46,8 +46,38 @@ type NewSession struct {
 }
 
 type Location struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
+	Code      string `json:"code"`
+	Name      string `json:"name"`
+	Type      string `json:"type,omitempty"`
+	Address   string `json:"address,omitempty"`
+	IsDefault bool   `json:"is_default,omitempty"`
+	Status    string `json:"status,omitempty"`
+}
+
+type NewLocation struct {
+	Name, Type, Address string
+	IsDefault           bool
+}
+
+type PartyContact struct {
+	Type, Label, Value string
+	IsPrimary          bool `json:"is_primary"`
+}
+type PartyAddress struct {
+	Type, Label, Address, City, Province, PostalCode string
+	IsPrimary                                        bool `json:"is_primary"`
+}
+type Party struct {
+	Code, PartyType, DisplayName, LegalName, Status, Notes string
+	Relationships                                          []string       `json:"relationships"`
+	Contacts                                               []PartyContact `json:"contacts"`
+	Addresses                                              []PartyAddress `json:"addresses"`
+}
+type NewParty struct {
+	PartyType, DisplayName, LegalName, Notes string
+	Relationships                            []string
+	Contacts                                 []PartyContact
+	Addresses                                []PartyAddress
 }
 
 type Business struct {
@@ -67,6 +97,14 @@ type BusinessContext struct {
 	Business
 }
 
+type BusinessMember struct {
+	UserCode string `json:"user_code"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	Status   string `json:"status"`
+}
+
 type NewUser struct {
 	Code         string
 	Name         string
@@ -83,6 +121,32 @@ type NewBusiness struct {
 	LocationCode   string
 	UnitCode       string
 	EnabledModules []string
+}
+
+type Category struct {
+	Code         string  `json:"code"`
+	Name         string  `json:"name"`
+	CategoryType string  `json:"category_type"`
+	ParentCode   *string `json:"parent_code,omitempty"`
+	Status       string  `json:"status"`
+}
+
+type Unit struct {
+	Code     string `json:"code"`
+	Name     string `json:"name"`
+	Symbol   string `json:"symbol"`
+	UnitType string `json:"unit_type"`
+	Status   string `json:"status"`
+}
+
+type NewUnit struct{ Name, Symbol, UnitType string }
+type UnitConversion struct{ ProductCode, FromUnitCode, ToUnitCode, Multiplier string }
+type NewUnitConversion struct{ ProductCode, FromUnitCode, ToUnitCode, Multiplier string }
+
+type NewCategory struct {
+	Name         string
+	CategoryType string
+	ParentCode   string
 }
 
 const (
@@ -160,6 +224,8 @@ type Product struct {
 	MinStock             string `json:"min_stock"`
 	IsStockTracked       bool   `json:"is_stock_tracked"`
 	Status               string `json:"status"`
+	CategoryCode         string `json:"category_code,omitempty"`
+	CategoryName         string `json:"category_name,omitempty"`
 }
 
 type NewProduct struct {
@@ -171,6 +237,7 @@ type NewProduct struct {
 	DefaultSellingPrice  string
 	MinStock             string
 	IsStockTracked       bool
+	CategoryCode         string
 }
 
 type InventoryProduct struct {
