@@ -71,7 +71,7 @@ func (s *repositoryStub) ListBusinessMembers(context.Context, string) ([]Busines
 func (s *repositoryStub) InviteBusinessMember(context.Context, string, string, string, string) (BusinessMember, error) {
 	return BusinessMember{}, nil
 }
-func (s *repositoryStub) UpdateBusinessMember(context.Context, string, string, string, string, string) (BusinessMember, error) {
+func (s *repositoryStub) UpdateBusinessMember(context.Context, string, string, string, string, string, string) (BusinessMember, error) {
 	return BusinessMember{}, nil
 }
 

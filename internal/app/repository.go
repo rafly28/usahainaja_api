@@ -17,7 +17,7 @@ type Repository interface {
 	UpdateBusinessConfiguration(context.Context, string, string, string, []string) error
 	ListBusinessMembers(context.Context, string) ([]BusinessMember, error)
 	InviteBusinessMember(context.Context, string, string, string, string) (BusinessMember, error)
-	UpdateBusinessMember(context.Context, string, string, string, string, string) (BusinessMember, error)
+	UpdateBusinessMember(context.Context, string, string, string, string, string, string) (BusinessMember, error)
 	ListCategories(context.Context, string, string) ([]Category, error)
 	CreateCategory(context.Context, string, string, NewCategory) (Category, error)
 	UpdateCategory(context.Context, string, string, string, string, NewCategory) (Category, error)

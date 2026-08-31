@@ -80,7 +80,7 @@ func (s *Service) UpdateBusinessMember(ctx context.Context, session Session, bus
 	if len(fields) != 0 {
 		return BusinessMember{}, validationError(fields)
 	}
-	item, err := s.repo.UpdateBusinessMember(ctx, business.ID, session.UserID, userCode, role, status)
+	item, err := s.repo.UpdateBusinessMember(ctx, business.ID, session.UserID, business.Role, userCode, role, status)
 	if errors.Is(err, ErrNotFound) {
 		return BusinessMember{}, &Error{Code: "MEMBER_NOT_FOUND", Message: "Anggota tidak ditemukan."}
 	}

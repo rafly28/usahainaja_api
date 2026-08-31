@@ -54,7 +54,7 @@ func (s *apiRepositoryStub) ListBusinessMembers(context.Context, string) ([]app.
 func (s *apiRepositoryStub) InviteBusinessMember(context.Context, string, string, string, string) (app.BusinessMember, error) {
 	return app.BusinessMember{}, nil
 }
-func (s *apiRepositoryStub) UpdateBusinessMember(context.Context, string, string, string, string, string) (app.BusinessMember, error) {
+func (s *apiRepositoryStub) UpdateBusinessMember(context.Context, string, string, string, string, string, string) (app.BusinessMember, error) {
 	return app.BusinessMember{}, nil
 }
 func (s *apiRepositoryStub) ListCategories(context.Context, string, string) ([]app.Category, error) {

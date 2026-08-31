@@ -57,7 +57,7 @@ func (r *Repository) InviteBusinessMember(ctx context.Context, businessID, actor
 	return app.BusinessMember{UserCode: userCode, Name: name, Email: resolvedEmail, Role: roleCode, Status: "INVITED"}, nil
 }
 
-func (r *Repository) UpdateBusinessMember(ctx context.Context, businessID, actorID, userCode, roleCode, status string) (app.BusinessMember, error) {
+func (r *Repository) UpdateBusinessMember(ctx context.Context, businessID, actorID, actorRole, userCode, roleCode, status string) (app.BusinessMember, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return app.BusinessMember{}, err
@@ -70,6 +70,9 @@ func (r *Repository) UpdateBusinessMember(ctx context.Context, businessID, actor
 		WHERE bm.business_id=$1 AND u.public_code=$2 FOR UPDATE`, businessID, userCode).Scan(&memberID, &userID, &currentRole, &currentStatus, &name, &email)
 	if err != nil {
 		return app.BusinessMember{}, mapError(err)
+	}
+	if actorRole != "OWNER" && currentRole == "OWNER" {
+		return app.BusinessMember{}, app.ErrForbidden
 	}
 	if currentRole == "OWNER" && (roleCode != "OWNER" || status != "ACTIVE") {
 		var ownerCount int
