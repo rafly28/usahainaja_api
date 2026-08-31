@@ -18,14 +18,52 @@ func (a *API) listSales(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, items)
 }
 
+type saleItemRequest struct {
+	ProductCode string      `json:"product_code"`
+	Quantity    decimalJSON `json:"quantity"`
+	UnitPrice   decimalJSON `json:"unit_price"`
+	Discount    decimalJSON `json:"discount"`
+	Notes       string      `json:"notes,omitempty"`
+}
+
+type createSaleRequest struct {
+	LocationCode  string            `json:"location_code"`
+	CustomerCode  string            `json:"customer_code"`
+	PaymentStatus string            `json:"payment_status,omitempty"`
+	DiscountTotal decimalJSON       `json:"discount_total,omitempty"`
+	TaxTotal      decimalJSON       `json:"tax_total,omitempty"`
+	Notes         string            `json:"notes,omitempty"`
+	Items         []saleItemRequest `json:"items"`
+}
+
 func (a *API) createSale(w http.ResponseWriter, r *http.Request) {
-	var input app.NewSale
-	if !decodeJSON(w, r, &input) {
+	var request createSaleRequest
+	if !decodeJSON(w, r, &request) {
 		return
 	}
 	session := sessionFrom(r.Context())
 	businessID := businessFrom(r.Context()).ID
-	result, err := a.service.CreateSale(r.Context(), session, businessID, input)
+
+	items := make([]app.NewSaleItem, len(request.Items))
+	for i, it := range request.Items {
+		items[i] = app.NewSaleItem{
+			ProductCode: it.ProductCode,
+			Quantity:    string(it.Quantity),
+			UnitPrice:   string(it.UnitPrice),
+			Discount:    string(it.Discount),
+			Notes:       it.Notes,
+		}
+	}
+
+	result, err := a.service.CreateSale(r.Context(), session, businessID, app.NewSale{
+		LocationCode:  request.LocationCode,
+		CustomerCode:  request.CustomerCode,
+		PaymentStatus: request.PaymentStatus,
+		DiscountTotal: string(request.DiscountTotal),
+		TaxTotal:      string(request.TaxTotal),
+		Notes:         request.Notes,
+		Items:         items,
+	})
 	if err != nil {
 		writeAppError(w, r, err)
 		return
@@ -34,15 +72,20 @@ func (a *API) createSale(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) checkoutSale(w http.ResponseWriter, r *http.Request) {
-	var input app.PaymentInput
-	if !decodeJSON(w, r, &input) {
+	var request paymentInputRequest
+	if !decodeJSON(w, r, &request) {
 		return
 	}
 	session := sessionFrom(r.Context())
 	businessID := businessFrom(r.Context()).ID
 	receiptNumber := chi.URLParam(r, "number")
 
-	result, err := a.service.CheckoutSale(r.Context(), session, businessID, receiptNumber, input)
+	result, err := a.service.CheckoutSale(r.Context(), session, businessID, receiptNumber, app.PaymentInput{
+		CashAccountCode: request.CashAccountCode,
+		Amount:          string(request.Amount),
+		ReferenceNumber: request.ReferenceNumber,
+		Notes:           request.Notes,
+	})
 	if err != nil {
 		writeAppError(w, r, err)
 		return
