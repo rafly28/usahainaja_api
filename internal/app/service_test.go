@@ -74,6 +74,13 @@ func (s *repositoryStub) CreateCategory(context.Context, string, string, NewCate
 func (s *repositoryStub) UpdateCategory(context.Context, string, string, string, string, NewCategory) (Category, error) {
 	return Category{}, nil
 }
+func (s *repositoryStub) ListUnits(context.Context, string) ([]Unit, error) { return nil, nil }
+func (s *repositoryStub) CreateUnit(context.Context, string, string, NewUnit) (Unit, error) {
+	return Unit{}, nil
+}
+func (s *repositoryStub) UpdateUnit(context.Context, string, string, string, string, NewUnit) (Unit, error) {
+	return Unit{}, nil
+}
 func (r *repositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]Product, error) {
 	if r.ListProductsFunc != nil {
 		return r.ListProductsFunc(ctx, businessID)
@@ -295,5 +302,18 @@ func TestNormalizeCategoryInput(t *testing.T) {
 	}
 	if _, err := normalizeCategoryInput(CreateCategoryInput{Name: "", CategoryType: "unknown"}); err == nil {
 		t.Fatal("expected invalid category input to be rejected")
+	}
+}
+
+func TestNormalizeUnitInput(t *testing.T) {
+	unit, err := normalizeUnitInput(" Kilogram ", " kg ", "weight")
+	if err != nil {
+		t.Fatalf("normalizeUnitInput() error = %v", err)
+	}
+	if unit.Name != "Kilogram" || unit.Symbol != "KG" || unit.UnitType != "WEIGHT" {
+		t.Fatalf("normalized unit = %#v", unit)
+	}
+	if _, err := normalizeUnitInput("", "", "invalid"); err == nil {
+		t.Fatal("expected invalid unit input")
 	}
 }

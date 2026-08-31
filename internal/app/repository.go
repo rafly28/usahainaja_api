@@ -18,6 +18,9 @@ type Repository interface {
 	ListCategories(context.Context, string, string) ([]Category, error)
 	CreateCategory(context.Context, string, string, NewCategory) (Category, error)
 	UpdateCategory(context.Context, string, string, string, string, NewCategory) (Category, error)
+	ListUnits(context.Context, string) ([]Unit, error)
+	CreateUnit(context.Context, string, string, NewUnit) (Unit, error)
+	UpdateUnit(context.Context, string, string, string, string, NewUnit) (Unit, error)
 
 	ListProducts(ctx context.Context, businessID string, search string) ([]Product, error)
 	CreateProduct(ctx context.Context, businessID string, input NewProduct) (Product, error)

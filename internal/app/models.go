@@ -93,6 +93,16 @@ type Category struct {
 	Status       string  `json:"status"`
 }
 
+type Unit struct {
+	Code     string `json:"code"`
+	Name     string `json:"name"`
+	Symbol   string `json:"symbol"`
+	UnitType string `json:"unit_type"`
+	Status   string `json:"status"`
+}
+
+type NewUnit struct{ Name, Symbol, UnitType string }
+
 type NewCategory struct {
 	Name         string
 	CategoryType string
