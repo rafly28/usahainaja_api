@@ -37,4 +37,6 @@ type Repository interface {
 
 	ListPurchases(context.Context, string) ([]Purchase, error)
 	CreatePurchase(context.Context, string, string, NewPurchase) (Purchase, error)
+	ReceivePurchase(ctx context.Context, businessID, purchaseNumber, userID string) error
+	RecordPurchasePayment(ctx context.Context, businessID, purchaseNumber, userID string, in PaymentInput) (Payment, error)
 }

@@ -25,7 +25,8 @@ func (s *Service) CreatePurchase(ctx context.Context, session Session, businessI
 		paymentStatus = "PAID"
 	}
 	if !oneOf(paymentStatus, "UNPAID", "PARTIAL", "PAID") {
-		fields["payment_status"] = "Status pembayaran tidak valid."
+		// Just force it to UNPAID for draft, or accept it but it won't be used for initial state.
+		// Wait, T04 says CreatePurchase should create a DRAFT. So payment must be UNPAID initially.
 	}
 	discountTotal, err := decimalOrZero(in.DiscountTotal, 2, 16)
 	if err != nil {
@@ -63,7 +64,7 @@ func (s *Service) CreatePurchase(ctx context.Context, session Session, businessI
 	}
 
 	in.LocationCode = locationCode
-	in.PaymentStatus = paymentStatus
+	in.PaymentStatus = "UNPAID" // Force UNPAID for drafts
 	in.DiscountTotal = discountTotal
 	in.TaxTotal = taxTotal
 
@@ -75,4 +76,40 @@ func (s *Service) CreatePurchase(ctx context.Context, session Session, businessI
 		return Purchase{}, &Error{Code: "INTERNAL_ERROR", Message: "Tidak dapat memproses pembelian.", Cause: err}
 	}
 	return purchase, nil
+}
+
+func (s *Service) ReceivePurchase(ctx context.Context, session Session, businessID, purchaseNumber string) error {
+	err := s.repo.ReceivePurchase(ctx, businessID, purchaseNumber, session.UserID)
+	if errors.Is(err, ErrNotFound) {
+		return &Error{Code: "NOT_FOUND", Message: "Pesanan tidak ditemukan atau sudah tidak dalam status DRAFT."}
+	}
+	if err != nil {
+		return &Error{Code: "INTERNAL_ERROR", Message: "Gagal memproses penerimaan barang.", Cause: err}
+	}
+	return nil
+}
+
+func (s *Service) PayPurchase(ctx context.Context, session Session, businessID, purchaseNumber string, in PaymentInput) (Payment, error) {
+	fields := map[string]string{}
+	if strings.TrimSpace(in.CashAccountCode) == "" {
+		fields["cash_account_code"] = "Akun kas wajib diisi."
+	}
+	amount, err := normalizeDecimal(in.Amount, 2, 16, true)
+	if err != nil {
+		fields["amount"] = "Nominal pembayaran tidak valid."
+	}
+	in.Amount = amount
+
+	if len(fields) != 0 {
+		return Payment{}, validationError(fields)
+	}
+
+	payment, err := s.repo.RecordPurchasePayment(ctx, businessID, purchaseNumber, session.UserID, in)
+	if errors.Is(err, ErrNotFound) {
+		return Payment{}, &Error{Code: "NOT_FOUND", Message: "Pesanan atau akun kas tidak ditemukan."}
+	}
+	if err != nil {
+		return Payment{}, &Error{Code: "INTERNAL_ERROR", Message: "Gagal mencatat pembayaran.", Cause: err}
+	}
+	return payment, nil
 }

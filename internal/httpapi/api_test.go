@@ -97,6 +97,14 @@ func (s *apiRepositoryStub) CreatePurchase(context.Context, string, string, app.
 	return app.Purchase{}, nil
 }
 
+func (s *apiRepositoryStub) ReceivePurchase(ctx context.Context, businessID, purchaseNumber, userID string) error {
+	return nil
+}
+
+func (s *apiRepositoryStub) RecordPurchasePayment(ctx context.Context, businessID, purchaseNumber, userID string, in app.PaymentInput) (app.Payment, error) {
+	return app.Payment{}, nil
+}
+
 func testHandler(role string) http.Handler {
 	businessID := "business-id"
 	repo := &apiRepositoryStub{

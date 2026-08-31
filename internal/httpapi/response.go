@@ -54,13 +54,13 @@ func writeAppError(w http.ResponseWriter, r *http.Request, err error) {
 
 func statusForCode(code string) int {
 	switch code {
-	case "VALIDATION_ERROR":
-		return http.StatusUnprocessableEntity
+	case "VALIDATION_ERROR", "INVALID_REQUEST", "INVALID_JSON":
+		return http.StatusBadRequest
 	case "UNAUTHENTICATED", "UNAUTHORIZED":
 		return http.StatusUnauthorized
 	case "BUSINESS_ACCESS_DENIED", "STOCK_TRACKING_DISABLED", "PERMISSION_DENIED":
 		return http.StatusForbidden
-	case "PRODUCT_OR_LOCATION_NOT_FOUND":
+	case "PRODUCT_OR_LOCATION_NOT_FOUND", "PRODUCT_NOT_FOUND", "NOT_FOUND":
 		return http.StatusNotFound
 	case "ACTIVE_BUSINESS_REQUIRED", "EMAIL_ALREADY_EXISTS", "PRODUCT_CONFLICT", "OPENING_STOCK_ALREADY_RECORDED":
 		return http.StatusConflict

@@ -296,3 +296,19 @@ type NewPurchase struct {
 	Notes           string            `json:"notes,omitempty"`
 	Items           []NewPurchaseItem `json:"items"`
 }
+
+type PaymentInput struct {
+	CashAccountCode string `json:"cash_account_code"`
+	Amount          string `json:"amount"`
+	ReferenceNumber string `json:"reference_number,omitempty"`
+	Notes           string `json:"notes,omitempty"`
+}
+
+type Payment struct {
+	PaymentNumber   string    `json:"payment_number"`
+	CashAccountCode string    `json:"cash_account_code"`
+	PaymentDate     time.Time `json:"payment_date"`
+	Amount          string    `json:"amount"`
+	ReferenceNumber string    `json:"reference_number,omitempty"`
+	Notes           string    `json:"notes,omitempty"`
+}

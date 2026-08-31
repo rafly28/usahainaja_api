@@ -77,6 +77,8 @@ func New(service *app.Service, cookieName string, cookieSecure bool) http.Handle
 
 			r.Get("/purchases", api.listPurchases)
 			r.With(api.requireCSRF).Post("/purchases", api.createPurchase)
+			r.With(api.requireCSRF).Post("/purchases/{number}/receive", api.receivePurchase)
+			r.With(api.requireCSRF).Post("/purchases/{number}/payments", api.payPurchase)
 		})
 		r.Route("/inventory", func(r chi.Router) {
 			r.Use(api.requireSession)

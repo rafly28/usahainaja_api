@@ -123,6 +123,14 @@ func (s *repositoryStub) CreatePurchase(context.Context, string, string, NewPurc
 	return Purchase{}, nil
 }
 
+func (s *repositoryStub) ReceivePurchase(ctx context.Context, businessID, purchaseNumber, userID string) error {
+	return nil
+}
+
+func (s *repositoryStub) RecordPurchasePayment(ctx context.Context, businessID, purchaseNumber, userID string, in PaymentInput) (Payment, error) {
+	return Payment{}, nil
+}
+
 func TestRegisterNormalizesIdentityHashesPasswordAndRotatesSession(t *testing.T) {
 	repo := &repositoryStub{}
 	service := NewService(repo, time.Hour, bcrypt.MinCost)

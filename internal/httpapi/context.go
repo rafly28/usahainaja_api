@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"usahainaja/backend/internal/app"
@@ -30,7 +31,9 @@ func (a *API) requireSession(next http.Handler) http.Handler {
 func (a *API) requireCSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		provided := normalizedHeader(r.Header.Get("X-CSRF-Token"))
-		if !a.service.ValidateCSRF(sessionFrom(r.Context()), provided) {
+		session := sessionFrom(r.Context())
+		if !a.service.ValidateCSRF(session, provided) {
+			slog.Error("CSRF validation failed", "provided", provided, "expected", session.CSRFToken)
 			writeError(w, r, http.StatusForbidden, "CSRF_TOKEN_INVALID", "Token CSRF tidak valid.", nil)
 			return
 		}

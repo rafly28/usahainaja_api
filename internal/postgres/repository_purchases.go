@@ -69,7 +69,7 @@ func (r *Repository) CreatePurchase(ctx context.Context, businessID, userID stri
 		INSERT INTO purchases (
 			business_id, location_id, supplier_id, purchase_number, reference_number, status, payment_status, 
 			discount_total, tax_total, created_by
-		) VALUES ($1, $2, $3, $4, NULLIF($5, ''), 'COMPLETED', $6, $7, $8, $9) RETURNING id`,
+		) VALUES ($1, $2, $3, $4, NULLIF($5, ''), 'DRAFT', $6, $7, $8, $9) RETURNING id`,
 		businessID, locationID, supplierID, purchaseNumber, input.ReferenceNumber, input.PaymentStatus, input.DiscountTotal, input.TaxTotal, userID,
 	).Scan(&purchaseID)
 	if err != nil {
@@ -77,9 +77,8 @@ func (r *Repository) CreatePurchase(ctx context.Context, businessID, userID stri
 	}
 
 	for _, item := range input.Items {
-		var prodID, baseUnitID string
-		var isTracked bool
-		err = tx.QueryRow(ctx, `SELECT id, base_unit_id, is_stock_tracked FROM products WHERE business_id = $1 AND public_code = $2`, businessID, item.ProductCode).Scan(&prodID, &baseUnitID, &isTracked)
+		var prodID string
+		err = tx.QueryRow(ctx, `SELECT id FROM products WHERE business_id = $1 AND public_code = $2`, businessID, item.ProductCode).Scan(&prodID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return app.Purchase{}, app.ErrNotFound
 		}
@@ -91,26 +90,6 @@ func (r *Repository) CreatePurchase(ctx context.Context, businessID, userID stri
 		)
 		if err != nil {
 			return app.Purchase{}, err
-		}
-
-		if isTracked {
-			_, err = tx.Exec(ctx, `
-				INSERT INTO stock_movements (business_id, product_id, location_id, movement_type, direction, quantity, unit_id, base_quantity, base_unit_id, reference_id, created_by)
-				VALUES ($1, $2, $3, 'PURCHASE', 'IN', $4, $5, $4, $5, $6, $7)`,
-				businessID, prodID, locationID, item.Quantity, baseUnitID, purchaseID, userID,
-			)
-			if err != nil {
-				return app.Purchase{}, err
-			}
-			_, err = tx.Exec(ctx, `
-				INSERT INTO product_inventory (business_id, product_id, location_id, quantity, base_unit_id)
-				VALUES ($1, $2, $3, $4::numeric, $5)
-				ON CONFLICT (business_id, product_id, location_id) DO UPDATE SET quantity = product_inventory.quantity + $4::numeric`,
-				businessID, prodID, locationID, item.Quantity, baseUnitID,
-			)
-			if err != nil {
-				return app.Purchase{}, err
-			}
 		}
 	}
 
@@ -124,27 +103,6 @@ func (r *Repository) CreatePurchase(ctx context.Context, businessID, userID stri
 		return app.Purchase{}, err
 	}
 
-	// If paid, create payment
-	if input.PaymentStatus == "PAID" {
-		var cashID string
-		err = tx.QueryRow(ctx, `SELECT id FROM cash_accounts WHERE business_id = $1 AND is_default = true LIMIT 1`, businessID).Scan(&cashID)
-		if err == nil {
-			payNumber, _ := nextNumber(ctx, tx, businessID, "PAY")
-			if payNumber == "" { payNumber = "PAY-" + purchaseNumber }
-			_, err = tx.Exec(ctx, `
-				INSERT INTO payments (business_id, cash_account_id, purchase_id, payment_number, amount, created_by)
-				SELECT $1, $2, $3, $4, grand_total, $5 FROM purchases WHERE id = $3`,
-				businessID, cashID, purchaseID, payNumber, userID)
-			if err != nil {
-				return app.Purchase{}, err
-			}
-			_, err = tx.Exec(ctx, `UPDATE cash_accounts SET balance = balance - (SELECT grand_total FROM purchases WHERE id = $1) WHERE id = $2`, purchaseID, cashID)
-			if err != nil {
-				return app.Purchase{}, err
-			}
-		}
-	}
-
 	if err := tx.Commit(ctx); err != nil {
 		return app.Purchase{}, err
 	}
@@ -152,4 +110,142 @@ func (r *Repository) CreatePurchase(ctx context.Context, businessID, userID stri
 	var purchase app.Purchase
 	purchase.PurchaseNumber = purchaseNumber
 	return purchase, nil
+}
+
+func (r *Repository) ReceivePurchase(ctx context.Context, businessID, purchaseNumber, userID string) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer rollback(ctx, tx)
+
+	var purchaseID, locationID string
+	err = tx.QueryRow(ctx, `
+		UPDATE purchases SET status = 'COMPLETED', updated_at = now()
+		WHERE business_id = $1 AND purchase_number = $2 AND status = 'DRAFT'
+		RETURNING id, location_id`, businessID, purchaseNumber).Scan(&purchaseID, &locationID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	rows, err := tx.Query(ctx, `
+		SELECT pi.product_id, pi.quantity, p.base_unit_id, p.is_stock_tracked
+		FROM purchase_items pi
+		JOIN products p ON p.id = pi.product_id
+		WHERE pi.business_id = $1 AND pi.purchase_id = $2`, businessID, purchaseID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type item struct {
+		prodID    string
+		quantity  string
+		baseUnit  string
+		isTracked bool
+	}
+	var items []item
+	for rows.Next() {
+		var it item
+		if err := rows.Scan(&it.prodID, &it.quantity, &it.baseUnit, &it.isTracked); err != nil {
+			return err
+		}
+		items = append(items, it)
+	}
+	rows.Close()
+
+	for _, it := range items {
+		if !it.isTracked {
+			continue
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO stock_movements (business_id, product_id, location_id, movement_type, direction, quantity, unit_id, base_quantity, base_unit_id, reference_id, created_by)
+			VALUES ($1, $2, $3, 'PURCHASE', 'IN', $4, $5, $4, $5, $6, $7)`,
+			businessID, it.prodID, locationID, it.quantity, it.baseUnit, purchaseID, userID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO product_inventory (business_id, product_id, location_id, quantity, base_unit_id)
+			VALUES ($1, $2, $3, $4::numeric, $5)
+			ON CONFLICT (business_id, product_id, location_id) DO UPDATE SET quantity = product_inventory.quantity + $4::numeric`,
+			businessID, it.prodID, locationID, it.quantity, it.baseUnit)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *Repository) RecordPurchasePayment(ctx context.Context, businessID, purchaseNumber, userID string, in app.PaymentInput) (app.Payment, error) {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return app.Payment{}, err
+	}
+	defer rollback(ctx, tx)
+
+	var cashID string
+	err = tx.QueryRow(ctx, `SELECT id FROM cash_accounts WHERE business_id = $1 AND public_code = $2 AND status = 'ACTIVE'`, businessID, in.CashAccountCode).Scan(&cashID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.Payment{}, app.ErrNotFound
+	}
+
+	var purchaseID string
+	err = tx.QueryRow(ctx, `SELECT id FROM purchases WHERE business_id = $1 AND purchase_number = $2`, businessID, purchaseNumber).Scan(&purchaseID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.Payment{}, app.ErrNotFound
+	}
+
+	payNumber, err := nextNumber(ctx, tx, businessID, "PAY")
+	if err != nil || payNumber == "" {
+		payNumber = fmt.Sprintf("PAY-%d", time.Now().UnixMilli())
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO payments (business_id, cash_account_id, purchase_id, payment_number, amount, reference_number, notes, created_by)
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), NULLIF($7, ''), $8)`,
+		businessID, cashID, purchaseID, payNumber, in.Amount, in.ReferenceNumber, in.Notes, userID)
+	if err != nil {
+		return app.Payment{}, err
+	}
+
+	_, err = tx.Exec(ctx, `UPDATE cash_accounts SET balance = balance - $1::numeric WHERE id = $2`, in.Amount, cashID)
+	if err != nil {
+		return app.Payment{}, err
+	}
+
+	var paidTotal, grandTotal float64
+	err = tx.QueryRow(ctx, `
+		SELECT COALESCE((SELECT SUM(amount) FROM payments WHERE purchase_id = p.id), 0), p.grand_total
+		FROM purchases p WHERE p.id = $1`, purchaseID).Scan(&paidTotal, &grandTotal)
+	if err != nil {
+		return app.Payment{}, err
+	}
+
+	newStatus := "PARTIAL"
+	if paidTotal >= grandTotal {
+		newStatus = "PAID"
+	}
+
+	_, err = tx.Exec(ctx, `UPDATE purchases SET payment_status = $1, updated_at = now() WHERE id = $2`, newStatus, purchaseID)
+	if err != nil {
+		return app.Payment{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return app.Payment{}, err
+	}
+
+	return app.Payment{
+		PaymentNumber:   payNumber,
+		CashAccountCode: in.CashAccountCode,
+		PaymentDate:     time.Now(),
+		Amount:          in.Amount,
+		ReferenceNumber: in.ReferenceNumber,
+		Notes:           in.Notes,
+	}, nil
 }
