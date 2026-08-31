@@ -66,6 +66,8 @@ func New(service *app.Service, cookieName string, cookieSecure bool) http.Handle
 			r.With(api.requireBusiness).Get("/locations", api.listLocations)
 			r.With(api.requireBusiness, api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/locations", api.createLocation)
 			r.With(api.requireBusiness, api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Patch("/locations/{code}", api.updateLocation)
+			r.With(api.requireBusiness).Get("/parties", api.listParties)
+			r.With(api.requireBusiness, api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/parties", api.createParty)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(api.requireSession)

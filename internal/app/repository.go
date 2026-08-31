@@ -24,6 +24,8 @@ type Repository interface {
 	ListLocations(context.Context, string) ([]Location, error)
 	CreateLocation(context.Context, string, string, NewLocation) (Location, error)
 	UpdateLocation(context.Context, string, string, string, string, NewLocation) (Location, error)
+	ListParties(context.Context, string) ([]Party, error)
+	CreateParty(context.Context, string, string, NewParty) (Party, error)
 
 	ListProducts(ctx context.Context, businessID string, search string) ([]Product, error)
 	CreateProduct(ctx context.Context, businessID string, input NewProduct) (Product, error)

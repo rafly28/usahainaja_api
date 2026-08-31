@@ -73,6 +73,12 @@ func (s *apiRepositoryStub) CreateLocation(context.Context, string, string, app.
 func (s *apiRepositoryStub) UpdateLocation(context.Context, string, string, string, string, app.NewLocation) (app.Location, error) {
 	return app.Location{}, nil
 }
+func (s *apiRepositoryStub) ListParties(context.Context, string) ([]app.Party, error) {
+	return nil, nil
+}
+func (s *apiRepositoryStub) CreateParty(context.Context, string, string, app.NewParty) (app.Party, error) {
+	return app.Party{}, nil
+}
 func (r *apiRepositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]app.Product, error) {
 	return []app.Product{}, nil
 }

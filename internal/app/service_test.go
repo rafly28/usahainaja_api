@@ -88,6 +88,10 @@ func (s *repositoryStub) CreateLocation(context.Context, string, string, NewLoca
 func (s *repositoryStub) UpdateLocation(context.Context, string, string, string, string, NewLocation) (Location, error) {
 	return Location{}, nil
 }
+func (s *repositoryStub) ListParties(context.Context, string) ([]Party, error) { return nil, nil }
+func (s *repositoryStub) CreateParty(context.Context, string, string, NewParty) (Party, error) {
+	return Party{}, nil
+}
 func (r *repositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]Product, error) {
 	if r.ListProductsFunc != nil {
 		return r.ListProductsFunc(ctx, businessID)
