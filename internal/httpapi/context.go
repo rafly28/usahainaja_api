@@ -69,6 +69,20 @@ func (a *API) requireRole(allowed ...string) func(http.Handler) http.Handler {
 	}
 }
 
+func (a *API) requireModule(module string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			for _, enabled := range businessFrom(r.Context()).EnabledModules {
+				if enabled == module {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			writeError(w, r, http.StatusForbidden, "MODULE_DISABLED", "Modul bisnis ini tidak aktif.", map[string]string{"module": module})
+		})
+	}
+}
+
 func sessionFrom(ctx context.Context) app.Session {
 	session, _ := ctx.Value(sessionContextKey).(app.Session)
 	return session

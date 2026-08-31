@@ -191,11 +191,39 @@ func (s *Service) CreateBusiness(ctx context.Context, session Session, in Create
 	}
 	business, err := s.repo.CreateBusiness(ctx, session.UserID, session.ID, NewBusiness{
 		Code: code, Name: name, BusinessType: businessType, Timezone: timezone, Currency: currency,
-		LocationCode: "LOC-DEFAULT", UnitCode: "UNT-PCS",
+		LocationCode: "LOC-DEFAULT", UnitCode: "UNT-PCS", EnabledModules: DefaultModulesForBusinessType(businessType),
 	})
 	if err != nil {
 		return BusinessContext{}, &Error{Code: "INTERNAL_ERROR", Message: "Tidak dapat membuat bisnis.", Cause: err}
 	}
+	return business, nil
+}
+
+type UpdateBusinessConfigurationInput struct {
+	BusinessType   string
+	EnabledModules []string
+}
+
+func (s *Service) UpdateBusinessConfiguration(ctx context.Context, session Session, business BusinessContext, in UpdateBusinessConfigurationInput) (BusinessContext, error) {
+	if !oneOf(business.Role, "OWNER", "ADMIN") {
+		return BusinessContext{}, &Error{Code: "PERMISSION_DENIED", Message: "Anda tidak memiliki izin untuk mengubah modul bisnis."}
+	}
+	businessType := strings.ToUpper(strings.TrimSpace(in.BusinessType))
+	if businessType == "" {
+		businessType = business.BusinessType
+	}
+	if !oneOf(businessType, "RETAIL", "SERVICE", "ENTERTAINMENT", "OTHER") {
+		return BusinessContext{}, validationError(map[string]string{"business_type": "Tipe bisnis tidak didukung."})
+	}
+	modules, err := NormalizeModules(in.EnabledModules)
+	if err != nil {
+		return BusinessContext{}, validationError(map[string]string{"enabled_modules": err.Error()})
+	}
+	if err := s.repo.UpdateBusinessConfiguration(ctx, business.ID, session.UserID, businessType, modules); err != nil {
+		return BusinessContext{}, &Error{Code: "INTERNAL_ERROR", Message: "Tidak dapat menyimpan modul bisnis.", Cause: err}
+	}
+	business.EnabledModules = modules
+	business.BusinessType = businessType
 	return business, nil
 }
 
@@ -430,11 +458,11 @@ func (s *Service) CreateStockAdjustment(ctx context.Context, session Session, bu
 	if input.LocationCode == "" {
 		input.LocationCode = "LOC-DEFAULT"
 	}
-	
+
 	if len(input.Items) == 0 {
 		return StockAdjustment{}, validationError(map[string]string{"items": "Minimal 1 barang."})
 	}
-	
+
 	var validatedItems []NewStockAdjustmentItem
 	for i, item := range input.Items {
 		item.ProductCode = strings.ToUpper(strings.TrimSpace(item.ProductCode))
@@ -442,7 +470,7 @@ func (s *Service) CreateStockAdjustment(ctx context.Context, session Session, bu
 		if item.Direction != "IN" && item.Direction != "OUT" {
 			return StockAdjustment{}, validationError(map[string]string{fmt.Sprintf("items[%d].direction", i): "Arah harus IN atau OUT."})
 		}
-		
+
 		q, err := normalizeDecimal(item.Quantity, 4, 14, true)
 		if err != nil {
 			return StockAdjustment{}, validationError(map[string]string{fmt.Sprintf("items[%d].quantity", i): err.Error()})

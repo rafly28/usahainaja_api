@@ -1,6 +1,10 @@
 package app
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 type User struct {
 	Code  string `json:"code"`
@@ -50,6 +54,7 @@ type Business struct {
 	Code            string    `json:"code"`
 	Name            string    `json:"name"`
 	BusinessType    string    `json:"business_type"`
+	EnabledModules  []string  `json:"enabled_modules"`
 	Timezone        string    `json:"timezone"`
 	Currency        string    `json:"currency"`
 	Role            string    `json:"role,omitempty"`
@@ -70,13 +75,78 @@ type NewUser struct {
 }
 
 type NewBusiness struct {
-	Code         string
-	Name         string
-	BusinessType string
-	Timezone     string
-	Currency     string
-	LocationCode string
-	UnitCode     string
+	Code           string
+	Name           string
+	BusinessType   string
+	Timezone       string
+	Currency       string
+	LocationCode   string
+	UnitCode       string
+	EnabledModules []string
+}
+
+const (
+	ModuleCatalog   = "CATALOG"
+	ModuleInventory = "INVENTORY"
+	ModuleSales     = "SALES"
+	ModulePurchase  = "PURCHASE"
+	ModuleFinance   = "FINANCE"
+	ModuleBooking   = "BOOKING"
+	ModuleReporting = "REPORTING"
+)
+
+var moduleOrder = []string{
+	ModuleCatalog,
+	ModuleInventory,
+	ModuleSales,
+	ModulePurchase,
+	ModuleFinance,
+	ModuleBooking,
+	ModuleReporting,
+}
+
+// DefaultModulesForBusinessType is the initial module profile created with a
+// business. Module configuration may later be changed by an owner or admin.
+func DefaultModulesForBusinessType(businessType string) []string {
+	switch businessType {
+	case "RETAIL":
+		return []string{ModuleCatalog, ModuleInventory, ModuleSales, ModulePurchase, ModuleFinance, ModuleReporting}
+	case "SERVICE", "ENTERTAINMENT":
+		return []string{ModuleBooking, ModuleFinance, ModuleReporting}
+	default:
+		return []string{}
+	}
+}
+
+// NormalizeModules validates module codes, de-duplicates them, and returns a
+// stable order for API responses and database writes.
+func NormalizeModules(modules []string) ([]string, error) {
+	selected := make(map[string]struct{}, len(modules))
+	for _, module := range modules {
+		module = strings.ToUpper(strings.TrimSpace(module))
+		if module == "" {
+			continue
+		}
+		valid := false
+		for _, allowed := range moduleOrder {
+			if module == allowed {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return nil, fmt.Errorf("modul %q tidak didukung", module)
+		}
+		selected[module] = struct{}{}
+	}
+
+	result := make([]string, 0, len(selected))
+	for _, module := range moduleOrder {
+		if _, ok := selected[module]; ok {
+			result = append(result, module)
+		}
+	}
+	return result, nil
 }
 
 type Product struct {
