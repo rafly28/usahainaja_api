@@ -97,6 +97,14 @@ type BusinessContext struct {
 	Business
 }
 
+type BusinessMember struct {
+	UserCode string `json:"user_code"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	Status   string `json:"status"`
+}
+
 type NewUser struct {
 	Code         string
 	Name         string

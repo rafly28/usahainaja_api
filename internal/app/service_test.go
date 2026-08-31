@@ -65,6 +65,33 @@ func (s *repositoryStub) UpdateBusinessConfiguration(ctx context.Context, busine
 	}
 	return nil
 }
+func (s *repositoryStub) ListBusinessMembers(context.Context, string) ([]BusinessMember, error) {
+	return nil, nil
+}
+func (s *repositoryStub) InviteBusinessMember(context.Context, string, string, string, string) (BusinessMember, error) {
+	return BusinessMember{}, nil
+}
+func (s *repositoryStub) UpdateBusinessMember(context.Context, string, string, string, string, string) (BusinessMember, error) {
+	return BusinessMember{}, nil
+}
+
+func TestInviteBusinessMemberPreventsAdminAssigningOwner(t *testing.T) {
+	service := NewService(&repositoryStub{}, time.Hour, bcrypt.MinCost)
+	_, err := service.InviteBusinessMember(context.Background(), Session{UserID: "user-1"}, BusinessContext{ID: "business-1", Role: "ADMIN"}, InviteBusinessMemberInput{Email: "member@example.com", Role: "OWNER"})
+	var appErr *Error
+	if !errors.As(err, &appErr) || appErr.Code != "VALIDATION_ERROR" {
+		t.Fatalf("expected validation error, got %#v", err)
+	}
+}
+
+func TestUpdateBusinessMemberRejectsInvalidStatus(t *testing.T) {
+	service := NewService(&repositoryStub{}, time.Hour, bcrypt.MinCost)
+	_, err := service.UpdateBusinessMember(context.Background(), Session{UserID: "user-1"}, BusinessContext{ID: "business-1", Role: "OWNER"}, "USR-000001", UpdateBusinessMemberInput{Role: "VIEWER", Status: "DELETED"})
+	var appErr *Error
+	if !errors.As(err, &appErr) || appErr.Code != "VALIDATION_ERROR" {
+		t.Fatalf("expected validation error, got %#v", err)
+	}
+}
 func (s *repositoryStub) ListCategories(context.Context, string, string) ([]Category, error) {
 	return nil, nil
 }
