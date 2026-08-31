@@ -144,7 +144,9 @@ func (r *Repository) DeleteSession(ctx context.Context, sessionID string) error 
 func (r *Repository) ListBusinesses(ctx context.Context, userID string) ([]app.Business, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT b.public_code, b.name, b.business_type, b.timezone, b.currency, r.code,
-		       l.public_code, l.name
+		       l.public_code, l.name,
+		       ARRAY(SELECT module_code FROM business_modules m WHERE m.business_id = b.id
+		             ORDER BY array_position(ARRAY['CATALOG', 'INVENTORY', 'SALES', 'PURCHASE', 'FINANCE', 'BOOKING', 'REPORTING'], module_code))
 		FROM business_members bm
 		JOIN businesses b ON b.id = bm.business_id AND b.status = 'ACTIVE'
 		JOIN roles r ON r.id = bm.role_id AND r.business_id = b.id
@@ -160,7 +162,7 @@ func (r *Repository) ListBusinesses(ctx context.Context, userID string) ([]app.B
 		var item app.Business
 		var locationCode, locationName *string
 		if err := rows.Scan(&item.Code, &item.Name, &item.BusinessType, &item.Timezone,
-			&item.Currency, &item.Role, &locationCode, &locationName); err != nil {
+			&item.Currency, &item.Role, &locationCode, &locationName, &item.EnabledModules); err != nil {
 			return nil, err
 		}
 		if locationCode != nil && locationName != nil {
@@ -225,8 +227,21 @@ func (r *Repository) CreateBusiness(ctx context.Context, userID, sessionID strin
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO number_sequences (business_id, sequence_type, prefix)
-		VALUES ($1, 'PRODUCT', 'PRD'), ($1, 'OPENING_STOCK', 'OPEN')`, businessID); err != nil {
+		VALUES ($1, 'PRODUCT', 'PRD'), ($1, 'OPENING_STOCK', 'OPEN'),
+		       ($1, 'STOCK_ADJUSTMENT', 'ADJ'), ($1, 'CONTACT', 'CNT'),
+		       ($1, 'CASH', 'CSH'), ($1, 'SALE', 'SL'), ($1, 'PURC', 'PUR'),
+		       ($1, 'PAY', 'PAY')`, businessID); err != nil {
 		return app.BusinessContext{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO cash_accounts (business_id, public_code, name, account_type, balance, is_default)
+		VALUES ($1, 'CSH-DEFAULT', 'Kas Utama', 'CASH', 0, true)`, businessID); err != nil {
+		return app.BusinessContext{}, err
+	}
+	for _, module := range input.EnabledModules {
+		if _, err := tx.Exec(ctx, `INSERT INTO business_modules (business_id, module_code) VALUES ($1, $2)`, businessID, module); err != nil {
+			return app.BusinessContext{}, err
+		}
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_logs (business_id, actor_user_id, entity_type, entity_id, entity_code, action, after_data)
@@ -252,9 +267,41 @@ func (r *Repository) CreateBusiness(ctx context.Context, userID, sessionID strin
 		Business: app.Business{
 			Code: input.Code, Name: input.Name, BusinessType: input.BusinessType,
 			Timezone: input.Timezone, Currency: input.Currency, Role: "OWNER",
+			EnabledModules:  input.EnabledModules,
 			DefaultLocation: &app.Location{Code: input.LocationCode, Name: "Lokasi Utama"},
 		},
 	}, nil
+}
+
+func (r *Repository) UpdateBusinessConfiguration(ctx context.Context, businessID, userID, businessType string, modules []string) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer rollback(ctx, tx)
+
+	command, err := tx.Exec(ctx, `UPDATE businesses SET business_type = $2, updated_at = now() WHERE id = $1`, businessID, businessType)
+	if err != nil {
+		return err
+	}
+	if command.RowsAffected() != 1 {
+		return app.ErrNotFound
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM business_modules WHERE business_id = $1`, businessID); err != nil {
+		return err
+	}
+	for _, module := range modules {
+		if _, err := tx.Exec(ctx, `INSERT INTO business_modules (business_id, module_code) VALUES ($1, $2)`, businessID, module); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO audit_logs (business_id, actor_user_id, entity_type, entity_id, action, after_data)
+		VALUES ($1, $2, 'BUSINESS', $1, 'BUSINESS_CONFIGURATION_UPDATED', jsonb_build_object('business_type', $3::text, 'enabled_modules', $4::text[]))`,
+		businessID, userID, businessType, modules); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) GetBusinessContext(ctx context.Context, userID, businessID string) (app.BusinessContext, error) {
@@ -296,7 +343,9 @@ func getBusinessContext(ctx context.Context, q queryRower, userID, predicate, va
 	var locationCode, locationName *string
 	query := `
 		SELECT b.id::text, b.public_code, b.name, b.business_type, b.timezone, b.currency, r.code,
-		       l.public_code, l.name
+		       l.public_code, l.name,
+		       ARRAY(SELECT module_code FROM business_modules m WHERE m.business_id = b.id
+		             ORDER BY array_position(ARRAY['CATALOG', 'INVENTORY', 'SALES', 'PURCHASE', 'FINANCE', 'BOOKING', 'REPORTING'], module_code))
 		FROM business_members bm
 		JOIN businesses b ON b.id = bm.business_id AND b.status = 'ACTIVE'
 		JOIN roles r ON r.id = bm.role_id AND r.business_id = b.id
@@ -304,7 +353,7 @@ func getBusinessContext(ctx context.Context, q queryRower, userID, predicate, va
 		WHERE bm.user_id = $1 AND bm.status = 'ACTIVE' AND ` + predicate
 	err := q.QueryRow(ctx, query, userID, value).Scan(
 		&item.ID, &item.Code, &item.Name, &item.BusinessType, &item.Timezone, &item.Currency,
-		&item.Role, &locationCode, &locationName,
+		&item.Role, &locationCode, &locationName, &item.EnabledModules,
 	)
 	if err != nil {
 		return app.BusinessContext{}, mapError(err)
@@ -741,7 +790,7 @@ func (r *Repository) CompleteStockAdjustment(ctx context.Context, businessID, us
 	if err != nil {
 		return mapError(err)
 	}
-	
+
 	type itemData struct {
 		productID   string
 		productCode string
@@ -775,7 +824,7 @@ func (r *Repository) CompleteStockAdjustment(ctx context.Context, businessID, us
 		if item.direction == "OUT" {
 			multiplier = -1
 		}
-		
+
 		var newQty string
 		err = tx.QueryRow(ctx, `
 			INSERT INTO product_inventory (business_id, product_id, location_id, quantity, base_unit_id)
@@ -787,7 +836,7 @@ func (r *Repository) CompleteStockAdjustment(ctx context.Context, businessID, us
 		if err != nil {
 			return err
 		}
-		
+
 		if item.direction == "OUT" {
 			var checkQty float64
 			if err := r.pool.QueryRow(ctx, `SELECT $1::numeric`, newQty).Scan(&checkQty); err == nil && checkQty < 0 {

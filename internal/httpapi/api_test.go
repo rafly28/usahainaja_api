@@ -45,6 +45,9 @@ func (s *apiRepositoryStub) GetBusinessContext(context.Context, string, string) 
 func (s *apiRepositoryStub) SwitchBusiness(context.Context, string, string, string) (app.BusinessContext, error) {
 	return s.business, nil
 }
+func (s *apiRepositoryStub) UpdateBusinessConfiguration(context.Context, string, string, string, []string) error {
+	return nil
+}
 func (r *apiRepositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]app.Product, error) {
 	return []app.Product{}, nil
 }
@@ -112,7 +115,7 @@ func testHandler(role string) http.Handler {
 			ID: "session-id", UserID: "user-id", User: app.User{Code: "USR-1", Name: "Budi", Email: "budi@example.com"},
 			ActiveBusinessID: &businessID, CSRFToken: "csrf-token", ExpiresAt: time.Now().Add(time.Hour),
 		},
-		business: app.BusinessContext{ID: businessID, Role: role, Business: app.Business{Code: "BUS-1", Name: "Toko", Role: role}},
+		business: app.BusinessContext{ID: businessID, Role: role, Business: app.Business{Code: "BUS-1", Name: "Toko", Role: role, EnabledModules: []string{app.ModuleCatalog, app.ModuleInventory, app.ModuleSales, app.ModulePurchase, app.ModuleFinance}}},
 	}
 	return New(app.NewService(repo, time.Hour, bcrypt.MinCost), "session", false)
 }
@@ -160,5 +163,48 @@ func TestJSONMutationRequiresApplicationJSON(t *testing.T) {
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusUnsupportedMediaType {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestModuleDisabledRejectsProtectedEndpoint(t *testing.T) {
+	businessID := "business-id"
+	repo := &apiRepositoryStub{
+		session:  app.Session{ID: "session-id", UserID: "user-id", ActiveBusinessID: &businessID, CSRFToken: "csrf-token", ExpiresAt: time.Now().Add(time.Hour)},
+		business: app.BusinessContext{ID: businessID, Role: "OWNER", Business: app.Business{Code: "BUS-1", Name: "Jasa", BusinessType: "SERVICE", Role: "OWNER", EnabledModules: []string{app.ModuleBooking, app.ModuleFinance}}},
+	}
+	handler := New(app.NewService(repo, time.Hour, bcrypt.MinCost), "session", false)
+	request := httptest.NewRequest(http.MethodPost, "/api/products", strings.NewReader(`{"name":"Apel"}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-CSRF-Token", "csrf-token")
+	request.AddCookie(&http.Cookie{Name: "session", Value: "token"})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestOwnerCanUpdateBusinessConfiguration(t *testing.T) {
+	handler := testHandler("OWNER")
+	request := httptest.NewRequest(http.MethodPut, "/api/businesses/current/configuration", strings.NewReader(`{"business_type":"SERVICE","enabled_modules":["BOOKING","FINANCE"]}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-CSRF-Token", "csrf-token")
+	request.AddCookie(&http.Cookie{Name: "session", Value: "token"})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	var envelope struct {
+		Data struct {
+			BusinessType   string   `json:"business_type"`
+			EnabledModules []string `json:"enabled_modules"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if envelope.Data.BusinessType != "SERVICE" || len(envelope.Data.EnabledModules) != 2 {
+		t.Fatalf("configuration response = %#v", envelope.Data)
 	}
 }

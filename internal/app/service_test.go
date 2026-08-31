@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -22,6 +23,10 @@ type repositoryStub struct {
 	ListStockMovementsFunc      func(ctx context.Context, businessID string) ([]StockMovement, error)
 	CreateStockAdjustmentFunc   func(ctx context.Context, businessID, userID string, input NewStockAdjustment) (StockAdjustment, error)
 	CompleteStockAdjustmentFunc func(ctx context.Context, businessID, userID, adjustmentNumber string) error
+	UpdateBusinessConfigFunc    func(ctx context.Context, businessID, userID, businessType string, modules []string) error
+	replacedModules             []string
+	replacedBusinessID          string
+	replacedActorID             string
 	openingStockErr             error
 }
 
@@ -52,6 +57,13 @@ func (s *repositoryStub) GetBusinessContext(context.Context, string, string) (Bu
 }
 func (s *repositoryStub) SwitchBusiness(context.Context, string, string, string) (BusinessContext, error) {
 	return BusinessContext{}, nil
+}
+
+func (s *repositoryStub) UpdateBusinessConfiguration(ctx context.Context, businessID, actorID, businessType string, modules []string) error {
+	if s.UpdateBusinessConfigFunc != nil {
+		return s.UpdateBusinessConfigFunc(ctx, businessID, actorID, businessType, modules)
+	}
+	return nil
 }
 func (r *repositoryStub) ListProducts(ctx context.Context, businessID string, search string) ([]Product, error) {
 	if r.ListProductsFunc != nil {
@@ -199,5 +211,67 @@ func TestValidateCSRF(t *testing.T) {
 	}
 	if service.ValidateCSRF(session, "wrong-token") {
 		t.Fatal("expected a different token to fail")
+	}
+}
+
+func TestBusinessProfilesHaveExpectedInitialModules(t *testing.T) {
+	tests := map[string][]string{
+		"RETAIL":        {ModuleCatalog, ModuleInventory, ModuleSales, ModulePurchase, ModuleFinance, ModuleReporting},
+		"SERVICE":       {ModuleBooking, ModuleFinance, ModuleReporting},
+		"ENTERTAINMENT": {ModuleBooking, ModuleFinance, ModuleReporting},
+		"OTHER":         {},
+	}
+	for businessType, want := range tests {
+		t.Run(businessType, func(t *testing.T) {
+			got := DefaultModulesForBusinessType(businessType)
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("DefaultModulesForBusinessType(%q) = %#v, want %#v", businessType, got, want)
+			}
+		})
+	}
+}
+
+func TestNormalizeModulesRejectsUnknownAndUsesCanonicalOrder(t *testing.T) {
+	got, err := NormalizeModules([]string{" sales ", "INVENTORY", "SALES"})
+	if err != nil {
+		t.Fatalf("NormalizeModules() error = %v", err)
+	}
+	want := []string{ModuleInventory, ModuleSales}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("NormalizeModules() = %#v, want %#v", got, want)
+	}
+	if _, err := NormalizeModules([]string{"UNSUPPORTED"}); err == nil {
+		t.Fatal("NormalizeModules() should reject unknown module")
+	}
+}
+
+func TestUpdateBusinessModulesUsesValidatedModuleConfiguration(t *testing.T) {
+	repo := &repositoryStub{}
+	repo.UpdateBusinessConfigFunc = func(_ context.Context, businessID, actorID, businessType string, modules []string) error {
+		repo.replacedBusinessID, repo.replacedActorID = businessID, actorID
+		repo.replacedModules = append([]string(nil), modules...)
+		return nil
+	}
+	service := NewService(repo, time.Hour, bcrypt.MinCost)
+	business, err := service.UpdateBusinessConfiguration(context.Background(), Session{UserID: "owner-id"}, BusinessContext{
+		ID: "business-id", Role: "OWNER", Business: Business{BusinessType: "RETAIL", EnabledModules: []string{ModuleCatalog}},
+	}, UpdateBusinessConfigurationInput{BusinessType: "service", EnabledModules: []string{"finance", "sales", "FINANCE"}})
+	if err != nil {
+		t.Fatalf("UpdateBusinessModules() error = %v", err)
+	}
+	want := []string{ModuleSales, ModuleFinance}
+	if !reflect.DeepEqual(business.EnabledModules, want) || !reflect.DeepEqual(repo.replacedModules, want) {
+		t.Fatalf("updated modules = %#v, persisted = %#v, want %#v", business.EnabledModules, repo.replacedModules, want)
+	}
+	if repo.replacedBusinessID != "business-id" || repo.replacedActorID != "owner-id" {
+		t.Fatalf("persistence scope = (%q, %q)", repo.replacedBusinessID, repo.replacedActorID)
+	}
+	if business.BusinessType != "SERVICE" {
+		t.Fatalf("business type = %q, want SERVICE", business.BusinessType)
+	}
+	_, err = service.UpdateBusinessConfiguration(context.Background(), Session{UserID: "viewer-id"}, BusinessContext{ID: "business-id", Role: "VIEWER"}, UpdateBusinessConfigurationInput{})
+	var appErr *Error
+	if !errors.As(err, &appErr) || appErr.Code != "PERMISSION_DENIED" {
+		t.Fatalf("viewer update error = %#v", err)
 	}
 }

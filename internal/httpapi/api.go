@@ -56,38 +56,39 @@ func New(service *app.Service, cookieName string, cookieSecure bool) http.Handle
 			r.With(api.requireCSRF).Post("/businesses", api.createBusiness)
 			r.With(api.requireCSRF).Post("/businesses/", api.createBusiness)
 			r.With(api.requireBusiness).Get("/businesses/current", api.currentBusiness)
+			r.With(api.requireBusiness, api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Put("/businesses/current/configuration", api.updateBusinessConfiguration)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(api.requireSession)
 			r.Use(api.requireBusiness)
-			r.Get("/products", api.listProducts)
-			r.Get("/products/", api.listProducts)
-			r.With(api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/products", api.createProduct)
-			r.With(api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/products/", api.createProduct)
-			r.With(api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Patch("/products/{code}", api.updateProduct)
-			r.With(api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Delete("/products/{code}", api.deleteProduct)
+			r.With(api.requireModule(app.ModuleCatalog)).Get("/products", api.listProducts)
+			r.With(api.requireModule(app.ModuleCatalog)).Get("/products/", api.listProducts)
+			r.With(api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/products", api.createProduct)
+			r.With(api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/products/", api.createProduct)
+			r.With(api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Patch("/products/{code}", api.updateProduct)
+			r.With(api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Delete("/products/{code}", api.deleteProduct)
 			r.Get("/contacts", api.listContacts)
 			r.With(api.requireCSRF).Post("/contacts", api.createContact)
 
-			r.Get("/cash-accounts", api.listCashAccounts)
-			r.With(api.requireCSRF).Post("/cash-accounts", api.createCashAccount)
+			r.With(api.requireModule(app.ModuleFinance)).Get("/cash-accounts", api.listCashAccounts)
+			r.With(api.requireModule(app.ModuleFinance), api.requireCSRF).Post("/cash-accounts", api.createCashAccount)
 
-			r.Get("/sales", api.listSales)
-			r.With(api.requireCSRF).Post("/sales", api.createSale)
+			r.With(api.requireModule(app.ModuleSales)).Get("/sales", api.listSales)
+			r.With(api.requireModule(app.ModuleSales), api.requireCSRF).Post("/sales", api.createSale)
 
-			r.Get("/purchases", api.listPurchases)
-			r.With(api.requireCSRF).Post("/purchases", api.createPurchase)
-			r.With(api.requireCSRF).Post("/purchases/{number}/receive", api.receivePurchase)
-			r.With(api.requireCSRF).Post("/purchases/{number}/payments", api.payPurchase)
+			r.With(api.requireModule(app.ModulePurchase)).Get("/purchases", api.listPurchases)
+			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF).Post("/purchases", api.createPurchase)
+			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF).Post("/purchases/{number}/receive", api.receivePurchase)
+			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF).Post("/purchases/{number}/payments", api.payPurchase)
 		})
 		r.Route("/inventory", func(r chi.Router) {
 			r.Use(api.requireSession)
 			r.Use(api.requireBusiness)
-			r.Get("/products", api.listInventoryProducts)
-			r.With(api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/opening-stock", api.openingStock)
-			r.Get("/movements", api.listStockMovements)
-			r.With(api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/adjustments", api.createStockAdjustment)
-			r.With(api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/adjustments/{number}/complete", api.completeStockAdjustment)
+			r.With(api.requireModule(app.ModuleInventory)).Get("/products", api.listInventoryProducts)
+			r.With(api.requireModule(app.ModuleInventory), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/opening-stock", api.openingStock)
+			r.With(api.requireModule(app.ModuleInventory)).Get("/movements", api.listStockMovements)
+			r.With(api.requireModule(app.ModuleInventory), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/adjustments", api.createStockAdjustment)
+			r.With(api.requireModule(app.ModuleInventory), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/adjustments/{number}/complete", api.completeStockAdjustment)
 		})
 	})
 	return router
@@ -233,6 +234,24 @@ func (a *API) createBusiness(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) currentBusiness(w http.ResponseWriter, r *http.Request) {
 	writeData(w, http.StatusOK, businessFrom(r.Context()).Business)
+}
+
+type updateBusinessConfigurationRequest struct {
+	BusinessType   string   `json:"business_type"`
+	EnabledModules []string `json:"enabled_modules"`
+}
+
+func (a *API) updateBusinessConfiguration(w http.ResponseWriter, r *http.Request) {
+	var request updateBusinessConfigurationRequest
+	if !decodeJSON(w, r, &request) {
+		return
+	}
+	business, err := a.service.UpdateBusinessConfiguration(r.Context(), sessionFrom(r.Context()), businessFrom(r.Context()), app.UpdateBusinessConfigurationInput{BusinessType: request.BusinessType, EnabledModules: request.EnabledModules})
+	if err != nil {
+		writeAppError(w, r, err)
+		return
+	}
+	writeData(w, http.StatusOK, business.Business)
 }
 
 type decimalJSON string

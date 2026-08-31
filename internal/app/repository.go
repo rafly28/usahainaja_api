@@ -14,6 +14,7 @@ type Repository interface {
 	CreateBusiness(context.Context, string, string, NewBusiness) (BusinessContext, error)
 	GetBusinessContext(context.Context, string, string) (BusinessContext, error)
 	SwitchBusiness(context.Context, string, string, string) (BusinessContext, error)
+	UpdateBusinessConfiguration(context.Context, string, string, string, []string) error
 
 	ListProducts(ctx context.Context, businessID string, search string) ([]Product, error)
 	CreateProduct(ctx context.Context, businessID string, input NewProduct) (Product, error)

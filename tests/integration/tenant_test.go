@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -74,11 +75,11 @@ func TestAuthEndpoints(t *testing.T) {
 		t.Fatalf("failed to get csrf: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 OK for /api/auth/csrf, got %d", resp.StatusCode)
 	}
-	
+
 	body, _ := io.ReadAll(resp.Body)
 	var csrfResp struct {
 		Data struct {
@@ -141,7 +142,7 @@ func loginAndGetCSRF(t *testing.T, client *http.Client, url string, email, passw
 			t.Fatalf("expected 200 OK for login, got %d", resp.StatusCode)
 		}
 	}
-	
+
 	// re-fetch csrf after login (new session)
 	req, _ = http.NewRequest(http.MethodGet, url+"/api/auth/csrf", nil)
 	resp, _ = client.Do(req)
@@ -154,7 +155,7 @@ func registerUser(t *testing.T, client *http.Client, url string, name, email, pa
 	t.Helper()
 	jar, _ := cookiejar.New(nil)
 	client.Jar = jar
-	
+
 	registerBody := strings.NewReader(`{"name":"` + name + `","email":"` + email + `","password":"` + password + `"}`)
 	req, _ := http.NewRequest(http.MethodPost, url+"/api/auth/register", registerBody)
 	req.Header.Set("Content-Type", "application/json")
@@ -172,7 +173,7 @@ func registerUser(t *testing.T, client *http.Client, url string, name, email, pa
 	resp, _ = client.Do(req)
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	
+
 	var csrfResp struct {
 		Data struct {
 			CSRFToken string `json:"csrf_token"`
@@ -188,7 +189,7 @@ func registerUser(t *testing.T, client *http.Client, url string, name, email, pa
 }
 
 func TestBusinessCreation(t *testing.T) {
-	_, handler := setupApp(t)
+	pool, handler := setupApp(t)
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
@@ -211,8 +212,9 @@ func TestBusinessCreation(t *testing.T) {
 
 	var bizResp struct {
 		Data struct {
-			Code string `json:"code"`
-			Role string `json:"role"`
+			Code           string   `json:"code"`
+			Role           string   `json:"role"`
+			EnabledModules []string `json:"enabled_modules"`
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&bizResp); err != nil {
@@ -224,6 +226,26 @@ func TestBusinessCreation(t *testing.T) {
 	}
 	if bizResp.Data.Role != "OWNER" {
 		t.Fatalf("expected role OWNER, got %s", bizResp.Data.Role)
+	}
+	wantModules := []string{"CATALOG", "INVENTORY", "SALES", "PURCHASE", "FINANCE", "REPORTING"}
+	if !reflect.DeepEqual(bizResp.Data.EnabledModules, wantModules) {
+		t.Fatalf("enabled_modules = %#v, want %#v", bizResp.Data.EnabledModules, wantModules)
+	}
+	var defaultCashCount, sequenceCount int
+	if err := pool.QueryRow(context.Background(), `
+		SELECT COUNT(*) FROM cash_accounts ca
+		JOIN businesses b ON b.id = ca.business_id
+		WHERE b.public_code = $1 AND ca.is_default`, bizResp.Data.Code).Scan(&defaultCashCount); err != nil {
+		t.Fatalf("query default cash account: %v", err)
+	}
+	if err := pool.QueryRow(context.Background(), `
+		SELECT COUNT(*) FROM number_sequences ns
+		JOIN businesses b ON b.id = ns.business_id
+		WHERE b.public_code = $1 AND ns.sequence_type IN ('PRODUCT', 'OPENING_STOCK', 'STOCK_ADJUSTMENT', 'CONTACT', 'CASH', 'SALE', 'PURC', 'PAY')`, bizResp.Data.Code).Scan(&sequenceCount); err != nil {
+		t.Fatalf("query business sequences: %v", err)
+	}
+	if defaultCashCount != 1 || sequenceCount != 8 {
+		t.Fatalf("onboarding defaults: cash=%d, sequences=%d", defaultCashCount, sequenceCount)
 	}
 }
 
@@ -274,7 +296,7 @@ func TestCrossTenantIsolation(t *testing.T) {
 	clientB := &http.Client{}
 	csrfB := registerUser(t, clientB, server.URL, "User B", "b@test.com", "password")
 	bizB := createBusiness(t, clientB, server.URL, csrfB, "Business B")
-	
+
 	// User B tries to switch to Business A
 	switchBody := strings.NewReader(`{"business_code":"` + bizA + `"}`)
 	req, _ := http.NewRequest(http.MethodPost, server.URL+"/api/auth/switch-business", switchBody)
