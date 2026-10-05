@@ -26,8 +26,7 @@ func (s *Service) CreatePurchase(ctx context.Context, session Session, businessI
 		paymentStatus = "PAID"
 	}
 	if !oneOf(paymentStatus, "UNPAID", "PARTIAL", "PAID") {
-		// Just force it to UNPAID for draft, or accept it but it won't be used for initial state.
-		// Wait, T04 says CreatePurchase should create a DRAFT. So payment must be UNPAID initially.
+		fields["payment_status"] = "Status pembayaran tidak valid."
 	}
 	discountTotal, err := decimalOrZero(in.DiscountTotal, 2, 16)
 	if err != nil {
@@ -46,18 +45,21 @@ func (s *Service) CreatePurchase(ctx context.Context, session Session, businessI
 		q, err := normalizeDecimal(item.Quantity, 4, 14, true)
 		if err != nil {
 			fields["items"] = "Kuantitas tidak valid pada baris " + strconv.Itoa(i+1)
+		} else {
+			in.Items[i].Quantity = q
 		}
-		in.Items[i].Quantity = q
 		u, err := normalizeDecimal(item.UnitPrice, 2, 16, true)
 		if err != nil {
 			fields["items"] = "Harga tidak valid pada baris " + strconv.Itoa(i+1)
+		} else {
+			in.Items[i].UnitPrice = u
 		}
-		in.Items[i].UnitPrice = u
 		d, err := normalizeDecimal(item.Discount, 2, 16, false)
 		if err != nil {
 			fields["items"] = "Diskon tidak valid pada baris " + strconv.Itoa(i+1)
+		} else {
+			in.Items[i].Discount = d
 		}
-		in.Items[i].Discount = d
 	}
 
 	if len(fields) != 0 {

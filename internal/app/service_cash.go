@@ -35,7 +35,7 @@ func (s *Service) CreateCashAccount(ctx context.Context, businessID string, in C
 	if !oneOf(accountType, "CASH", "BANK", "EWALLET") {
 		fields["account_type"] = "Tipe akun tidak didukung."
 	}
-	balance, err := normalizeDecimal(in.Balance, 2, 16, true)
+	balance, err := decimalOrZero(in.Balance, 2, 16)
 	if err != nil {
 		fields["balance"] = err.Error()
 	}

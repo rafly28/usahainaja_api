@@ -45,18 +45,21 @@ func (s *Service) CreateSale(ctx context.Context, session Session, businessID st
 		q, err := normalizeDecimal(item.Quantity, 4, 14, true)
 		if err != nil {
 			fields["items"] = "Kuantitas tidak valid pada baris " + strconv.Itoa(i+1)
+		} else {
+			in.Items[i].Quantity = q
 		}
-		in.Items[i].Quantity = q
 		u, err := normalizeDecimal(item.UnitPrice, 2, 16, true)
 		if err != nil {
 			fields["items"] = "Harga tidak valid pada baris " + strconv.Itoa(i+1)
+		} else {
+			in.Items[i].UnitPrice = u
 		}
-		in.Items[i].UnitPrice = u
 		d, err := normalizeDecimal(item.Discount, 2, 16, false)
 		if err != nil {
 			fields["items"] = "Diskon tidak valid pada baris " + strconv.Itoa(i+1)
+		} else {
+			in.Items[i].Discount = d
 		}
-		in.Items[i].Discount = d
 	}
 
 	if len(fields) != 0 {
@@ -114,7 +117,7 @@ func (s *Service) VoidSale(ctx context.Context, session Session, businessID, rec
 	if reason == "" {
 		return validationError(map[string]string{"reason": "Alasan pembatalan harus diisi."})
 	}
-	
+
 	err := s.repo.VoidSale(ctx, businessID, session.UserID, receiptNumber, reason)
 	if errors.Is(err, ErrNotFound) {
 		return &Error{Code: "NOT_FOUND", Message: "Penjualan tidak ditemukan."}

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -52,7 +53,7 @@ func (r *Repository) CreateCashAccount(ctx context.Context, businessID string, i
 
 	code, err := nextNumber(ctx, tx, businessID, "CASH")
 	if err != nil {
-		code = "CSH-" + input.Name[:3]
+		code = "CSH-" + safeCodeSuffix(input.Name, time.Now().UnixMilli())
 	}
 
 	item := app.CashAccount{Code: code, Name: input.Name, AccountType: input.AccountType, Balance: input.Balance, IsDefault: input.IsDefault, Status: "ACTIVE"}

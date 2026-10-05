@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -904,6 +906,26 @@ func numeric(raw string) (pgtype.Numeric, error) {
 }
 
 func rollback(ctx context.Context, tx pgx.Tx) { _ = tx.Rollback(ctx) }
+
+// safeCodeSuffix membuat suffix fallback tanpa panic untuk nama pendek/unicode.
+func safeCodeSuffix(name string, seed int64) string {
+	upper := strings.ToUpper(strings.TrimSpace(name))
+	runes := []rune(upper)
+	prefix := string(runes)
+	if utf8.RuneCountInString(prefix) > 3 {
+		prefix = string(runes[:3])
+	}
+	var b strings.Builder
+	for _, r := range prefix {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	if b.Len() == 0 {
+		b.WriteString("XXX")
+	}
+	return fmt.Sprintf("%s%d", b.String(), seed%100000)
+}
 
 func mapError(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {

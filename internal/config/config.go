@@ -67,8 +67,8 @@ func Load() (Config, error) {
 	}
 	if raw := strings.TrimSpace(os.Getenv("BCRYPT_COST")); raw != "" {
 		cfg.BcryptCost, err = strconv.Atoi(raw)
-		if err != nil || cfg.BcryptCost < 4 || cfg.BcryptCost > 31 {
-			return Config{}, errors.New("BCRYPT_COST must be between 4 and 31")
+		if err != nil || cfg.BcryptCost < 10 || cfg.BcryptCost > 31 {
+			return Config{}, errors.New("BCRYPT_COST must be between 10 and 31")
 		}
 	}
 	if strings.TrimSpace(cfg.HTTPAddr) == "" {
@@ -76,6 +76,10 @@ func Load() (Config, error) {
 	}
 	if strings.TrimSpace(cfg.CookieName) == "" {
 		return Config{}, errors.New("COOKIE_NAME cannot be empty")
+	}
+	envLower := strings.ToLower(strings.TrimSpace(cfg.Env))
+	if envLower == "production" && !cfg.CookieSecure {
+		return Config{}, errors.New("COOKIE_SECURE must be true in production")
 	}
 
 	return cfg, nil

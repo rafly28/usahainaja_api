@@ -109,5 +109,5 @@ func (a *API) voidSale(w http.ResponseWriter, r *http.Request) {
 		writeAppError(w, r, err)
 		return
 	}
-	writeData(w, http.StatusOK, map[string]bool{"success": true})
+	writeData(w, http.StatusOK, map[string]string{"status": "VOIDED", "receipt_number": receiptNumber})
 }

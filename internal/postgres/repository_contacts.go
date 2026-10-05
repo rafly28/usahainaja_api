@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -38,8 +39,8 @@ func (r *Repository) CreateContact(ctx context.Context, businessID string, input
 
 	code, err := nextNumber(ctx, tx, businessID, "CONTACT")
 	if err != nil {
-		// fallback to random code if sequence not setup
-		code = "CUS-" + input.Name[:3] // simplify for now
+		// fallback aman tanpa panic untuk nama pendek/unicode
+		code = "CUS-" + safeCodeSuffix(input.Name, time.Now().UnixMilli())
 	}
 
 	item := app.Contact{Code: code, ContactType: input.ContactType, Name: input.Name, Email: input.Email, Phone: input.Phone, Address: input.Address, Status: "ACTIVE"}
