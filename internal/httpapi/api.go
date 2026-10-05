@@ -85,10 +85,10 @@ func New(service *app.Service, cookieName string, cookieSecure bool) http.Handle
 			r.With(api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Patch("/products/{code}", api.updateProduct)
 			r.With(api.requireModule(app.ModuleCatalog), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Delete("/products/{code}", api.deleteProduct)
 			r.Get("/contacts", api.listContacts)
-			r.With(api.requireCSRF).Post("/contacts", api.createContact)
+			r.With(api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/contacts", api.createContact)
 
 			r.With(api.requireModule(app.ModuleFinance)).Get("/cash-accounts", api.listCashAccounts)
-			r.With(api.requireModule(app.ModuleFinance), api.requireCSRF).Post("/cash-accounts", api.createCashAccount)
+			r.With(api.requireModule(app.ModuleFinance), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/cash-accounts", api.createCashAccount)
 
 			r.With(api.requireModule(app.ModuleSales)).Get("/sales", api.listSales)
 			r.With(api.requireModule(app.ModuleSales), api.requireCSRF, api.requireRole("OWNER", "ADMIN", "CASHIER")).Post("/sales", api.createSale)
@@ -96,9 +96,9 @@ func New(service *app.Service, cookieName string, cookieSecure bool) http.Handle
 			r.With(api.requireModule(app.ModuleSales), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/sales/{number}/void", api.voidSale)
 
 			r.With(api.requireModule(app.ModulePurchase)).Get("/purchases", api.listPurchases)
-			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF).Post("/purchases", api.createPurchase)
-			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF).Post("/purchases/{number}/receive", api.receivePurchase)
-			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF).Post("/purchases/{number}/payments", api.payPurchase)
+			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/purchases", api.createPurchase)
+			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/purchases/{number}/receive", api.receivePurchase)
+			r.With(api.requireModule(app.ModulePurchase), api.requireCSRF, api.requireRole("OWNER", "ADMIN")).Post("/purchases/{number}/payments", api.payPurchase)
 		})
 		r.Route("/inventory", func(r chi.Router) {
 			r.Use(api.requireSession)
@@ -473,14 +473,12 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, destination any) bool {
 
 func sessionMeta(r *http.Request) app.SessionMeta {
 	ip := r.RemoteAddr
-	if forwarded := strings.TrimSpace(r.Header.Get("X-Real-IP")); net.ParseIP(forwarded) != nil {
-		ip = forwarded
-	}
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		if net.ParseIP(ip) == nil {
-			ip = host
-		}
+		ip = host
 	}
+	// NOTE: X-Real-IP / X-Forwarded-For sengaja diabaikan karena backend
+	// tidak berada di belakang proxy terpercaya yang tervalidasi.
+	// Mempercayai header tersebut memungkinkan pemalsuan IP audit.
 	userAgent := r.UserAgent()
 	if len(userAgent) > 512 {
 		userAgent = userAgent[:512]

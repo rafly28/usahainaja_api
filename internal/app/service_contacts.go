@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"net/mail"
 	"strings"
 	"unicode/utf8"
 )
@@ -37,8 +38,12 @@ func (s *Service) CreateContact(ctx context.Context, businessID string, in Creat
 		fields["contact_type"] = "Tipe kontak tidak didukung."
 	}
 	email := strings.ToLower(strings.TrimSpace(in.Email))
-	if email != "" && utf8.RuneCountInString(email) > 254 {
-		fields["email"] = "Format email tidak valid."
+	if email != "" {
+		if utf8.RuneCountInString(email) > 254 {
+			fields["email"] = "Format email tidak valid."
+		} else if _, err := mail.ParseAddress(email); err != nil {
+			fields["email"] = "Format email tidak valid."
+		}
 	}
 	phone := strings.TrimSpace(in.Phone)
 	if utf8.RuneCountInString(phone) > 50 {

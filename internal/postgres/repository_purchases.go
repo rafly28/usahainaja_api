@@ -54,9 +54,13 @@ func (r *Repository) CreatePurchase(ctx context.Context, businessID, userID stri
 	if input.SupplierCode != "" {
 		var cid string
 		err = tx.QueryRow(ctx, `SELECT id FROM contacts WHERE business_id = $1 AND public_code = $2`, businessID, input.SupplierCode).Scan(&cid)
-		if err == nil {
-			supplierID = &cid
+		if errors.Is(err, pgx.ErrNoRows) {
+			return app.Purchase{}, app.ErrNotFound
 		}
+		if err != nil {
+			return app.Purchase{}, err
+		}
+		supplierID = &cid
 	}
 
 	purchaseNumber, err := nextNumber(ctx, tx, businessID, "PURC")
@@ -106,7 +110,7 @@ func (r *Repository) CreatePurchase(ctx context.Context, businessID, userID stri
 	if err := tx.Commit(ctx); err != nil {
 		return app.Purchase{}, err
 	}
-	
+
 	var purchase app.Purchase
 	purchase.PurchaseNumber = purchaseNumber
 	return purchase, nil

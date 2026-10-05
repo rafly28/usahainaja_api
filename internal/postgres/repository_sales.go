@@ -66,7 +66,7 @@ func (r *Repository) CreateSale(ctx context.Context, businessID, userID string, 
 	}
 
 	// Calculate totals inside postgres by just inserting items, but we need subtotal first.
-	// For simplicity in this demo logic, we'll let postgres trigger or calculate it, 
+	// For simplicity in this demo logic, we'll let postgres trigger or calculate it,
 	// OR we compute it in Go. Let's compute in Go for precise string decimal insertion.
 	// We will skip strict decimal math here and just let Postgres do `SUM`.
 
@@ -118,7 +118,7 @@ func (r *Repository) CreateSale(ctx context.Context, businessID, userID string, 
 		VALUES ($1, $2, 'SALE', $3, $4, 'CREATE', '{}')`,
 		businessID, userID, saleID, receiptNumber,
 	)
-	
+
 	// Fetch result
 	var sale app.Sale
 	sale.ReceiptNumber = receiptNumber
@@ -147,7 +147,7 @@ func (r *Repository) CheckoutSale(ctx context.Context, businessID, userID, recei
 	}
 
 	var cashID string
-	err = tx.QueryRow(ctx, `SELECT id FROM cash_accounts WHERE business_id = $1 AND public_code = $2`, businessID, paymentInput.CashAccountCode).Scan(&cashID)
+	err = tx.QueryRow(ctx, `SELECT id FROM cash_accounts WHERE business_id = $1 AND public_code = $2 AND status = 'ACTIVE'`, businessID, paymentInput.CashAccountCode).Scan(&cashID)
 	if err != nil {
 		return app.Sale{}, errors.New("akun kas tidak valid")
 	}
@@ -169,7 +169,7 @@ func (r *Repository) CheckoutSale(ctx context.Context, businessID, userID, recei
 	if err != nil {
 		return app.Sale{}, err
 	}
-	
+
 	type itemData struct {
 		prodID     string
 		quantity   string
@@ -228,7 +228,7 @@ func (r *Repository) CheckoutSale(ctx context.Context, businessID, userID, recei
 	if err != nil {
 		return app.Sale{}, err
 	}
-	
+
 	_, err = tx.Exec(ctx, `UPDATE cash_accounts SET balance = balance + $1::numeric WHERE id = $2`, paymentInput.Amount, cashID)
 	if err != nil {
 		return app.Sale{}, err
@@ -355,6 +355,6 @@ func (r *Repository) VoidSale(ctx context.Context, businessID, userID, receiptNu
 		VALUES ($1, $2, 'SALE', $3, $4, 'VOID', $5, '{}')`,
 		businessID, userID, saleID, receiptNumber, reason,
 	)
-	
+
 	return nil
 }

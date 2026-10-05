@@ -26,7 +26,7 @@ type UpdateLocationInput struct {
 	Type      string `json:"type"`
 	Address   string `json:"address"`
 	Status    string `json:"status"`
-	IsDefault bool   `json:"is_default"`
+	IsDefault *bool  `json:"is_default"`
 }
 
 func (s *Service) CreateLocation(ctx context.Context, session Session, business BusinessContext, in CreateLocationInput) (Location, error) {
@@ -54,7 +54,24 @@ func (s *Service) UpdateLocation(ctx context.Context, session Session, business 
 	if !codePattern.MatchString(code) {
 		return Location{}, validationError(map[string]string{"code": "Kode lokasi tidak valid."})
 	}
-	input, err := normalizeLocationInput(in.Name, in.Type, in.Address, in.IsDefault)
+	isDefault := false
+	if in.IsDefault != nil {
+		isDefault = *in.IsDefault
+	} else {
+		// Tanpa field is_default: pertahankan nilai lama (di-resolve di repo via flag khusus).
+		// Untuk sekarang default false tapi tidak memicu ErrConflict penghapusan default:
+		// repo hanya menolak jika oldDefault && explicit false. Kita tandai explicit di sini.
+		current, err := s.repo.ListLocations(ctx, business.ID)
+		if err == nil {
+			for _, loc := range current {
+				if loc.Code == code {
+					isDefault = loc.IsDefault
+					break
+				}
+			}
+		}
+	}
+	input, err := normalizeLocationInput(in.Name, in.Type, in.Address, isDefault)
 	if err != nil {
 		return Location{}, err
 	}
