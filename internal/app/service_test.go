@@ -185,11 +185,26 @@ func (s *repositoryStub) ListCashAccounts(context.Context, string) ([]CashAccoun
 func (s *repositoryStub) CreateCashAccount(context.Context, string, NewCashAccount) (CashAccount, error) {
 	return CashAccount{}, nil
 }
-func (s *repositoryStub) ListSales(context.Context, string) ([]Sale, error) {
-	return nil, nil
+func (s *repositoryStub) ListSales(ctx context.Context, businessID string, page, limit int) ([]Sale, int, error) {
+	return nil, 0, nil
 }
 func (s *repositoryStub) CreateSale(context.Context, string, string, NewSale) (Sale, error) {
 	return Sale{}, nil
+}
+func (s *repositoryStub) GetSale(ctx context.Context, businessID, receiptNumber string) (Sale, error) {
+	return Sale{}, nil
+}
+func (s *repositoryStub) AddSaleItem(ctx context.Context, businessID, userID, receiptNumber string, item NewSaleItem) (SaleItem, error) {
+	return SaleItem{}, nil
+}
+func (s *repositoryStub) UpdateSaleItem(ctx context.Context, businessID, userID, receiptNumber string, lineNumber int, item NewSaleItem) (SaleItem, error) {
+	return SaleItem{}, nil
+}
+func (s *repositoryStub) DeleteSaleItem(ctx context.Context, businessID, userID, receiptNumber string, lineNumber int) error {
+	return nil
+}
+func (s *repositoryStub) CancelSale(ctx context.Context, businessID, userID, receiptNumber string) error {
+	return nil
 }
 func (s *repositoryStub) CheckoutSale(context.Context, string, string, string, PaymentInput) (Sale, error) {
 	return Sale{}, nil
@@ -197,19 +212,41 @@ func (s *repositoryStub) CheckoutSale(context.Context, string, string, string, P
 func (s *repositoryStub) VoidSale(context.Context, string, string, string, string) error {
 	return nil
 }
-func (s *repositoryStub) ListPurchases(context.Context, string) ([]Purchase, error) {
-	return nil, nil
+func (s *repositoryStub) ListPurchases(ctx context.Context, businessID string, page, limit int) ([]Purchase, int, error) {
+	return nil, 0, nil
 }
 func (s *repositoryStub) CreatePurchase(context.Context, string, string, NewPurchase) (Purchase, error) {
 	return Purchase{}, nil
 }
-
-func (s *repositoryStub) ReceivePurchase(ctx context.Context, businessID, purchaseNumber, userID string) error {
+func (s *repositoryStub) GetPurchase(ctx context.Context, businessID, purchaseNumber string) (Purchase, error) {
+	return Purchase{}, nil
+}
+func (s *repositoryStub) AddPurchaseItem(ctx context.Context, businessID, userID, purchaseNumber string, item NewPurchaseItem) (PurchaseItem, error) {
+	return PurchaseItem{}, nil
+}
+func (s *repositoryStub) UpdatePurchaseItem(ctx context.Context, businessID, userID, purchaseNumber string, lineNumber int, item NewPurchaseItem) (PurchaseItem, error) {
+	return PurchaseItem{}, nil
+}
+func (s *repositoryStub) DeletePurchaseItem(ctx context.Context, businessID, userID, purchaseNumber string, lineNumber int) error {
 	return nil
 }
-
+func (s *repositoryStub) OrderPurchase(ctx context.Context, businessID, userID, purchaseNumber string) error {
+	return nil
+}
+func (s *repositoryStub) CancelPurchase(ctx context.Context, businessID, userID, purchaseNumber string) error {
+	return nil
+}
+func (s *repositoryStub) ReceivePurchase(ctx context.Context, businessID, purchaseNumber, userID string, in ReceivePurchaseInput) (PurchaseReceipt, error) {
+	return PurchaseReceipt{}, nil
+}
 func (s *repositoryStub) RecordPurchasePayment(ctx context.Context, businessID, purchaseNumber, userID string, in PaymentInput) (Payment, error) {
 	return Payment{}, nil
+}
+func (s *repositoryStub) FindIdempotency(ctx context.Context, businessID, key string) (int, []byte, string, bool, error) {
+	return 0, nil, "", false, nil
+}
+func (s *repositoryStub) StoreIdempotency(ctx context.Context, businessID, actorID, operation, route, key, hash string, status int, body []byte) error {
+	return nil
 }
 
 func TestRegisterNormalizesIdentityHashesPasswordAndRotatesSession(t *testing.T) {

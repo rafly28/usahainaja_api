@@ -359,6 +359,7 @@ type NewCashAccount struct {
 }
 
 type SaleItem struct {
+	LineNumber  int    `json:"line_number"`
 	ProductCode string `json:"product_code"`
 	ProductName string `json:"product_name"`
 	Quantity    string `json:"quantity"`
@@ -379,6 +380,7 @@ type Sale struct {
 	DiscountTotal string     `json:"discount_total"`
 	TaxTotal      string     `json:"tax_total"`
 	GrandTotal    string     `json:"grand_total"`
+	PaidTotal     string     `json:"paid_total,omitempty"`
 	Notes         string     `json:"notes,omitempty"`
 	Items         []SaleItem `json:"items,omitempty"`
 }
@@ -402,29 +404,48 @@ type NewSale struct {
 }
 
 type PurchaseItem struct {
-	ProductCode string `json:"product_code"`
-	ProductName string `json:"product_name"`
-	Quantity    string `json:"quantity"`
-	UnitPrice   string `json:"unit_price"`
-	Discount    string `json:"discount"`
-	Subtotal    string `json:"subtotal"`
-	Notes       string `json:"notes,omitempty"`
+	LineNumber       int    `json:"line_number"`
+	ProductCode      string `json:"product_code"`
+	ProductName      string `json:"product_name"`
+	Quantity         string `json:"quantity"`
+	OrderedQuantity  string `json:"ordered_quantity,omitempty"`
+	ReceivedQuantity string `json:"received_quantity,omitempty"`
+	UnitPrice        string `json:"unit_price"`
+	Discount         string `json:"discount"`
+	Subtotal         string `json:"subtotal"`
+	Notes            string `json:"notes,omitempty"`
+}
+
+type PurchaseReceiptItem struct {
+	LineNumber       int    `json:"line_number"`
+	ProductCode      string `json:"product_code"`
+	ReceivedQuantity string `json:"received_quantity"`
+}
+
+type PurchaseReceipt struct {
+	ReceiptNumber   string                `json:"receipt_number"`
+	ReceivedAt      time.Time             `json:"received_at"`
+	ReferenceNumber string                `json:"reference_number,omitempty"`
+	Items           []PurchaseReceiptItem `json:"items,omitempty"`
 }
 
 type Purchase struct {
-	PurchaseNumber  string         `json:"purchase_number"`
-	ReferenceNumber string         `json:"reference_number,omitempty"`
-	PurchaseDate    time.Time      `json:"purchase_date"`
-	LocationCode    string         `json:"location_code"`
-	SupplierCode    *string        `json:"supplier_code,omitempty"`
-	Status          string         `json:"status"`
-	PaymentStatus   string         `json:"payment_status"`
-	Subtotal        string         `json:"subtotal"`
-	DiscountTotal   string         `json:"discount_total"`
-	TaxTotal        string         `json:"tax_total"`
-	GrandTotal      string         `json:"grand_total"`
-	Notes           string         `json:"notes,omitempty"`
-	Items           []PurchaseItem `json:"items,omitempty"`
+	PurchaseNumber   string            `json:"purchase_number"`
+	ReferenceNumber  string            `json:"reference_number,omitempty"`
+	PurchaseDate     time.Time         `json:"purchase_date"`
+	LocationCode     string            `json:"location_code"`
+	SupplierCode     *string           `json:"supplier_code,omitempty"`
+	Status           string            `json:"status"`
+	PaymentStatus    string            `json:"payment_status"`
+	Subtotal         string            `json:"subtotal"`
+	DiscountTotal    string            `json:"discount_total"`
+	TaxTotal         string            `json:"tax_total"`
+	GrandTotal       string            `json:"grand_total"`
+	PaidTotal        string            `json:"paid_total,omitempty"`
+	OutstandingTotal string            `json:"outstanding_total,omitempty"`
+	Notes            string            `json:"notes,omitempty"`
+	Items            []PurchaseItem    `json:"items,omitempty"`
+	Receipts         []PurchaseReceipt `json:"receipts,omitempty"`
 }
 
 type NewPurchaseItem struct {
@@ -448,16 +469,32 @@ type NewPurchase struct {
 
 type PaymentInput struct {
 	CashAccountCode string `json:"cash_account_code"`
+	PaymentMethod   string `json:"payment_method_code,omitempty"`
 	Amount          string `json:"amount"`
+	PaidAt          string `json:"paid_at,omitempty"`
 	ReferenceNumber string `json:"reference_number,omitempty"`
 	Notes           string `json:"notes,omitempty"`
 }
 
+type ReceiveItemInput struct {
+	LineNumber       int    `json:"line_number"`
+	ReceivedQuantity string `json:"received_quantity"`
+}
+
+type ReceivePurchaseInput struct {
+	ReceivedAt      string             `json:"received_at,omitempty"`
+	ReferenceNumber string             `json:"reference_number,omitempty"`
+	Items           []ReceiveItemInput `json:"items"`
+}
+
 type Payment struct {
-	PaymentNumber   string    `json:"payment_number"`
-	CashAccountCode string    `json:"cash_account_code"`
-	PaymentDate     time.Time `json:"payment_date"`
-	Amount          string    `json:"amount"`
-	ReferenceNumber string    `json:"reference_number,omitempty"`
-	Notes           string    `json:"notes,omitempty"`
+	PaymentNumber    string    `json:"payment_number"`
+	CashAccountCode  string    `json:"cash_account_code"`
+	PaymentDate      time.Time `json:"payment_date"`
+	Amount           string    `json:"amount"`
+	Kind             string    `json:"kind,omitempty"`
+	PaidTotal        string    `json:"paid_total,omitempty"`
+	OutstandingTotal string    `json:"outstanding_total,omitempty"`
+	ReferenceNumber  string    `json:"reference_number,omitempty"`
+	Notes            string    `json:"notes,omitempty"`
 }
