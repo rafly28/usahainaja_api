@@ -1,10 +1,10 @@
 # Backend
 
-Backend vertical slice pertama UsahainAja menggunakan Go 1.22, `chi`, `pgxpool`, dan PostgreSQL. Scope saat ini sengaja dibatasi pada autentikasi, business context, produk, serta opening stock.
+Backend vertical slice pertama UsahainAja menggunakan Go 1.25, `chi`, `pgxpool`, dan PostgreSQL. Scope saat ini sengaja dibatasi pada autentikasi, business context, produk, serta opening stock.
 
 ## Menjalankan secara lokal
 
-Prasyarat: Go 1.22 dan PostgreSQL dengan extension `pgcrypto` tersedia.
+Prasyarat: Go 1.25 dan PostgreSQL dengan extension `pgcrypto` tersedia.
 
 ```bash
 cp .env.example .env
@@ -54,7 +54,30 @@ GET  /api/products
 POST /api/products
 POST /api/inventory/opening-stock
 GET  /api/inventory/products
+GET  /api/sales?page=1&limit=25
+POST /api/sales                       # draft (Idempotency-Key wajib)
+GET  /api/sales/{number}
+POST /api/sales/{number}/items
+PUT  /api/sales/{number}/items/{line}
+DELETE /api/sales/{number}/items/{line}
+POST /api/sales/{number}/cancel
+POST /api/sales/{number}/checkout
+POST /api/sales/{number}/void
+GET  /api/purchases?page=1&limit=25
+POST /api/purchases                    # draft (Idempotency-Key wajib)
+GET  /api/purchases/{number}
+POST /api/purchases/{number}/items
+PUT  /api/purchases/{number}/items/{line}
+DELETE /api/purchases/{number}/items/{line}
+POST /api/purchases/{number}/order
+POST /api/purchases/{number}/receive
+POST /api/purchases/{number}/payments
+POST /api/purchases/{number}/cancel
 ```
+
+Semua mutasi sales/purchase wajib mengirim `Idempotency-Key: <uuid>`;
+retry payload sama mengembalikan respons awal, payload berbeda memberi
+`409 IDEMPOTENCY_CONFLICT`.
 
 Register menerima `{ "name", "email", "password" }`; login menerima `{ "email", "password" }`. Keduanya membuat session ID baru, menyetel cookie `HttpOnly; SameSite=Lax`, dan mengembalikan `csrf_token`. Cookie lama pada browser tersebut direvoke ketika autentikasi berhasil.
 
@@ -145,18 +168,10 @@ Tests mencakup normalisasi identitas dan bcrypt, rotasi session, presisi decimal
 
 ## Status rilis Milestone 1 (T00)
 
-Rilis M1 hanya mencakup endpoint pada daftar "Endpoint milestone" di atas
-(autentikasi, business context, product, opening stock, inventory).
-
-Endpoint dan kode berikut bersifat **eksperimental/non-rilis** dan tidak dipakai
-pengguna rilis: `/api/contacts`, `/api/cash-accounts`, `/api/sales`,
-`/api/purchases` (termasuk `receive`/`payments`/`checkout`/`void`).
-Mereka tetap tersimpan di `main` untuk fase berikutnya.
-
-Isolasi yang dipakai: **branch rilis khusus M1**
-(`release/m1-foundation-inventory`, baseline tag `t00-m1-baseline`).
-Deploy/QA rilis mengacu ke branch rilis; eksperimen transaksi tidak di-QA-kan
-di rilis ini.
+Rilis M1 dicapai lewat branch `release/m1-foundation-inventory`
+(baseline tag `t00-m1-baseline`). Alur transaksi kontrak (T04/T05/T06)
+kini aktif di `main`: draft → order → receive parsial → payment dan
+draft → checkout → void append-only, seluruhnya idempoten.
 
 ## Struktur
 
