@@ -232,7 +232,12 @@ func (r *Repository) CreateBusiness(ctx context.Context, userID, sessionID strin
 		VALUES ($1, 'PRODUCT', 'PRD'), ($1, 'OPENING_STOCK', 'OPEN'),
 		       ($1, 'STOCK_ADJUSTMENT', 'ADJ'), ($1, 'CONTACT', 'CNT'),
 		       ($1, 'CASH', 'CSH'), ($1, 'SALE', 'SL'), ($1, 'PURC', 'PUR'),
-		       ($1, 'PAY', 'PAY')`, businessID); err != nil {
+		       ($1, 'PAY', 'PAY'), ($1, 'PURCHASE_RECEIPT', 'RCV')`, businessID); err != nil {
+		return app.BusinessContext{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO payment_methods (business_id, public_code, name, method_type, is_default)
+		VALUES ($1, 'CASH', 'Tunai', 'CASH', true)`, businessID); err != nil {
 		return app.BusinessContext{}, err
 	}
 	if _, err := tx.Exec(ctx, `
