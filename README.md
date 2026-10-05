@@ -25,7 +25,7 @@ Environment yang didukung:
 | `COOKIE_NAME` | `usahainaja_session` | Nama cookie session |
 | `COOKIE_SECURE` | `false` | Wajib `true` pada HTTPS production |
 | `SESSION_TTL` | `168h` | Masa berlaku server-side session |
-| `BCRYPT_COST` | `12` | Cost bcrypt, rentang 4–31 |
+| `BCRYPT_COST` | `12` | Cost bcrypt, rentang 10–31 |
 | `SHUTDOWN_TIMEOUT` | `10s` | Batas graceful shutdown |
 
 ## Menjalankan lewat Screen
@@ -142,6 +142,21 @@ go build -o /tmp/usahainaja-api ./cmd/api
 ```
 
 Tests mencakup normalisasi identitas dan bcrypt, rotasi session, presisi decimal, domain conflict opening stock, CSRF, canonical collection routes tanpa trailing slash, JSON content type, dan role guard.
+
+## Status rilis Milestone 1 (T00)
+
+Rilis M1 hanya mencakup endpoint pada daftar "Endpoint milestone" di atas
+(autentikasi, business context, product, opening stock, inventory).
+
+Endpoint dan kode berikut bersifat **eksperimental/non-rilis** dan tidak dipakai
+pengguna rilis: `/api/contacts`, `/api/cash-accounts`, `/api/sales`,
+`/api/purchases` (termasuk `receive`/`payments`/`checkout`/`void`).
+Mereka tetap tersimpan di `main` untuk fase berikutnya.
+
+Isolasi yang dipakai: **branch rilis khusus M1**
+(`release/m1-foundation-inventory`, baseline tag `t00-m1-baseline`).
+Deploy/QA rilis mengacu ke branch rilis; eksperimen transaksi tidak di-QA-kan
+di rilis ini.
 
 ## Struktur
 
