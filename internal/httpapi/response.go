@@ -54,7 +54,7 @@ func writeAppError(w http.ResponseWriter, r *http.Request, err error) {
 
 func statusForCode(code string) int {
 	switch code {
-	case "INVALID_JSON", "INVALID_REQUEST":
+	case "INVALID_JSON", "INVALID_REQUEST", "IDEMPOTENCY_KEY_REQUIRED":
 		return http.StatusBadRequest
 	case "VALIDATION_ERROR":
 		return http.StatusUnprocessableEntity
@@ -70,7 +70,8 @@ func statusForCode(code string) int {
 		"OPENING_STOCK_ALREADY_RECORDED", "INSUFFICIENT_STOCK", "INVALID_STATE",
 		"CONFLICT", "MEMBER_CONFLICT", "MEMBER_OWNER_PROTECTED",
 		"CATEGORY_CONFLICT", "UNIT_CONFLICT", "UNIT_CONVERSION_CONFLICT",
-		"LOCATION_CONFLICT", "PARTY_CONFLICT", "PRODUCT_HAS_HISTORY":
+		"LOCATION_CONFLICT", "PARTY_CONFLICT", "PRODUCT_HAS_HISTORY",
+		"IDEMPOTENCY_CONFLICT", "OVER_RECEIPT", "OVERPAYMENT":
 		return http.StatusConflict
 	default:
 		return http.StatusInternalServerError

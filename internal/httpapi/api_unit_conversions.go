@@ -13,6 +13,7 @@ func (a *API) listUnitConversions(w http.ResponseWriter, r *http.Request) {
 	}
 	writeData(w, http.StatusOK, map[string]any{"items": items})
 }
+
 type createUnitConversionRequest struct {
 	ProductCode  string      `json:"product_code"`
 	FromUnitCode string      `json:"from_unit_code"`

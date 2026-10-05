@@ -136,11 +136,26 @@ func (s *apiRepositoryStub) ListCashAccounts(context.Context, string) ([]app.Cas
 func (s *apiRepositoryStub) CreateCashAccount(context.Context, string, app.NewCashAccount) (app.CashAccount, error) {
 	return app.CashAccount{}, nil
 }
-func (s *apiRepositoryStub) ListSales(context.Context, string) ([]app.Sale, error) {
-	return nil, nil
+func (s *apiRepositoryStub) ListSales(ctx context.Context, businessID string, page, limit int) ([]app.Sale, int, error) {
+	return nil, 0, nil
 }
 func (s *apiRepositoryStub) CreateSale(context.Context, string, string, app.NewSale) (app.Sale, error) {
 	return app.Sale{}, nil
+}
+func (s *apiRepositoryStub) GetSale(ctx context.Context, businessID, receiptNumber string) (app.Sale, error) {
+	return app.Sale{}, nil
+}
+func (s *apiRepositoryStub) AddSaleItem(ctx context.Context, businessID, userID, receiptNumber string, item app.NewSaleItem) (app.SaleItem, error) {
+	return app.SaleItem{}, nil
+}
+func (s *apiRepositoryStub) UpdateSaleItem(ctx context.Context, businessID, userID, receiptNumber string, lineNumber int, item app.NewSaleItem) (app.SaleItem, error) {
+	return app.SaleItem{}, nil
+}
+func (s *apiRepositoryStub) DeleteSaleItem(ctx context.Context, businessID, userID, receiptNumber string, lineNumber int) error {
+	return nil
+}
+func (s *apiRepositoryStub) CancelSale(ctx context.Context, businessID, userID, receiptNumber string) error {
+	return nil
 }
 func (s *apiRepositoryStub) CheckoutSale(context.Context, string, string, string, app.PaymentInput) (app.Sale, error) {
 	return app.Sale{}, nil
@@ -148,19 +163,42 @@ func (s *apiRepositoryStub) CheckoutSale(context.Context, string, string, string
 func (s *apiRepositoryStub) VoidSale(context.Context, string, string, string, string) error {
 	return nil
 }
-func (s *apiRepositoryStub) ListPurchases(context.Context, string) ([]app.Purchase, error) {
-	return nil, nil
+func (s *apiRepositoryStub) ListPurchases(ctx context.Context, businessID string, page, limit int) ([]app.Purchase, int, error) {
+	return nil, 0, nil
 }
 func (s *apiRepositoryStub) CreatePurchase(context.Context, string, string, app.NewPurchase) (app.Purchase, error) {
 	return app.Purchase{}, nil
 }
-
-func (s *apiRepositoryStub) ReceivePurchase(ctx context.Context, businessID, purchaseNumber, userID string) error {
+func (s *apiRepositoryStub) GetPurchase(ctx context.Context, businessID, purchaseNumber string) (app.Purchase, error) {
+	return app.Purchase{}, nil
+}
+func (s *apiRepositoryStub) AddPurchaseItem(ctx context.Context, businessID, userID, purchaseNumber string, item app.NewPurchaseItem) (app.PurchaseItem, error) {
+	return app.PurchaseItem{}, nil
+}
+func (s *apiRepositoryStub) UpdatePurchaseItem(ctx context.Context, businessID, userID, purchaseNumber string, lineNumber int, item app.NewPurchaseItem) (app.PurchaseItem, error) {
+	return app.PurchaseItem{}, nil
+}
+func (s *apiRepositoryStub) DeletePurchaseItem(ctx context.Context, businessID, userID, purchaseNumber string, lineNumber int) error {
 	return nil
+}
+func (s *apiRepositoryStub) OrderPurchase(ctx context.Context, businessID, userID, purchaseNumber string) error {
+	return nil
+}
+func (s *apiRepositoryStub) CancelPurchase(ctx context.Context, businessID, userID, purchaseNumber string) error {
+	return nil
+}
+func (s *apiRepositoryStub) ReceivePurchase(ctx context.Context, businessID, purchaseNumber, userID string, in app.ReceivePurchaseInput) (app.PurchaseReceipt, error) {
+	return app.PurchaseReceipt{}, nil
 }
 
 func (s *apiRepositoryStub) RecordPurchasePayment(ctx context.Context, businessID, purchaseNumber, userID string, in app.PaymentInput) (app.Payment, error) {
 	return app.Payment{}, nil
+}
+func (s *apiRepositoryStub) FindIdempotency(ctx context.Context, businessID, key string) (int, []byte, string, bool, error) {
+	return 0, nil, "", false, nil
+}
+func (s *apiRepositoryStub) StoreIdempotency(ctx context.Context, businessID, actorID, operation, route, key, hash string, status int, body []byte) error {
+	return nil
 }
 
 func testHandler(role string) http.Handler {
