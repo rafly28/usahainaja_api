@@ -100,6 +100,7 @@ type Business struct {
 	Timezone        string    `json:"timezone"`
 	Currency        string    `json:"currency"`
 	Role            string    `json:"role,omitempty"`
+	LogoURL         string    `json:"logo_url,omitempty"`
 	DefaultLocation *Location `json:"default_location,omitempty"`
 }
 

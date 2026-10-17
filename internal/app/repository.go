@@ -14,7 +14,7 @@ type Repository interface {
 	CreateBusiness(context.Context, string, string, NewBusiness) (BusinessContext, error)
 	GetBusinessContext(context.Context, string, string) (BusinessContext, error)
 	SwitchBusiness(context.Context, string, string, string) (BusinessContext, error)
-	UpdateBusinessConfiguration(context.Context, string, string, string, []string) error
+	UpdateBusinessConfiguration(context.Context, string, string, string, []string, *string) error
 	ListBusinessMembers(context.Context, string) ([]BusinessMember, error)
 	InviteBusinessMember(context.Context, string, string, string, string) (BusinessMember, error)
 	UpdateBusinessMember(context.Context, string, string, string, string, string, string) (BusinessMember, error)

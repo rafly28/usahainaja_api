@@ -171,6 +171,8 @@ func (a *API) currentBusiness(w http.ResponseWriter, r *http.Request) {
 type updateBusinessConfigurationRequest struct {
 	BusinessType   string   `json:"business_type"`
 	EnabledModules []string `json:"enabled_modules"`
+	// LogoURL absent berarti tidak diubah; string kosong menghapus logo.
+	LogoURL *string `json:"logo_url,omitempty"`
 }
 
 func (a *API) updateBusinessConfiguration(w http.ResponseWriter, r *http.Request) {
@@ -178,7 +180,11 @@ func (a *API) updateBusinessConfiguration(w http.ResponseWriter, r *http.Request
 	if !decodeJSON(w, r, &request) {
 		return
 	}
-	business, err := a.service.UpdateBusinessConfiguration(r.Context(), sessionFrom(r.Context()), businessFrom(r.Context()), app.UpdateBusinessConfigurationInput{BusinessType: request.BusinessType, EnabledModules: request.EnabledModules})
+	business, err := a.service.UpdateBusinessConfiguration(r.Context(), sessionFrom(r.Context()), businessFrom(r.Context()), app.UpdateBusinessConfigurationInput{
+		BusinessType:   request.BusinessType,
+		EnabledModules: request.EnabledModules,
+		LogoURL:        request.LogoURL,
+	})
 	if err != nil {
 		writeAppError(w, r, err)
 		return

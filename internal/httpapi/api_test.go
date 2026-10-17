@@ -45,7 +45,7 @@ func (s *apiRepositoryStub) GetBusinessContext(context.Context, string, string) 
 func (s *apiRepositoryStub) SwitchBusiness(context.Context, string, string, string) (app.BusinessContext, error) {
 	return s.business, nil
 }
-func (s *apiRepositoryStub) UpdateBusinessConfiguration(context.Context, string, string, string, []string) error {
+func (s *apiRepositoryStub) UpdateBusinessConfiguration(context.Context, string, string, string, []string, *string) error {
 	return nil
 }
 func (s *apiRepositoryStub) ListBusinessMembers(context.Context, string) ([]app.BusinessMember, error) {

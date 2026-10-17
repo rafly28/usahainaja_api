@@ -59,7 +59,7 @@ func (s *repositoryStub) SwitchBusiness(context.Context, string, string, string)
 	return BusinessContext{}, nil
 }
 
-func (s *repositoryStub) UpdateBusinessConfiguration(ctx context.Context, businessID, actorID, businessType string, modules []string) error {
+func (s *repositoryStub) UpdateBusinessConfiguration(ctx context.Context, businessID, actorID, businessType string, modules []string, logoURL *string) error {
 	if s.UpdateBusinessConfigFunc != nil {
 		return s.UpdateBusinessConfigFunc(ctx, businessID, actorID, businessType, modules)
 	}

@@ -282,19 +282,33 @@ func (r *Repository) CreateBusiness(ctx context.Context, userID, sessionID strin
 	}, nil
 }
 
-func (r *Repository) UpdateBusinessConfiguration(ctx context.Context, businessID, userID, businessType string, modules []string) error {
+func (r *Repository) UpdateBusinessConfiguration(ctx context.Context, businessID, userID, businessType string, modules []string, logoURL *string) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
 	defer rollback(ctx, tx)
 
-	command, err := tx.Exec(ctx, `UPDATE businesses SET business_type = $2, updated_at = now() WHERE id = $1`, businessID, businessType)
-	if err != nil {
-		return err
-	}
-	if command.RowsAffected() != 1 {
-		return app.ErrNotFound
+	if logoURL != nil {
+		// String kosong berarti toko sengaja menghapus logonya.
+		command, err := tx.Exec(ctx, `
+			UPDATE businesses
+			SET logo_url = NULLIF($3, ''), updated_at = now()
+			WHERE id = $1 AND business_type = $2`, businessID, businessType, *logoURL)
+		if err != nil {
+			return err
+		}
+		if command.RowsAffected() != 1 {
+			return app.ErrNotFound
+		}
+	} else {
+		command, err := tx.Exec(ctx, `UPDATE businesses SET business_type = $2, updated_at = now() WHERE id = $1`, businessID, businessType)
+		if err != nil {
+			return err
+		}
+		if command.RowsAffected() != 1 {
+			return app.ErrNotFound
+		}
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM business_modules WHERE business_id = $1`, businessID); err != nil {
 		return err
@@ -306,8 +320,8 @@ func (r *Repository) UpdateBusinessConfiguration(ctx context.Context, businessID
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO audit_logs (business_id, actor_user_id, entity_type, entity_id, action, after_data)
-		VALUES ($1, $2, 'BUSINESS', $1, 'BUSINESS_CONFIGURATION_UPDATED', jsonb_build_object('business_type', $3::text, 'enabled_modules', $4::text[]))`,
-		businessID, userID, businessType, modules); err != nil {
+		VALUES ($1, $2, 'BUSINESS', $1, 'BUSINESS_CONFIGURATION_UPDATED', jsonb_build_object('business_type', $3::text, 'enabled_modules', $4::text[], 'logo_changed', $5::boolean))`,
+		businessID, userID, businessType, modules, logoURL != nil); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -352,6 +366,7 @@ func getBusinessContext(ctx context.Context, q queryRower, userID, predicate, va
 	var locationCode, locationName *string
 	query := `
 		SELECT b.id::text, b.public_code, b.name, b.business_type, b.timezone, b.currency, r.code,
+		       COALESCE(b.logo_url, ''),
 		       l.public_code, l.name,
 		       ARRAY(SELECT module_code FROM business_modules m WHERE m.business_id = b.id
 		             ORDER BY array_position(ARRAY['CATALOG', 'INVENTORY', 'SALES', 'PURCHASE', 'FINANCE', 'BOOKING', 'REPORTING'], module_code))
@@ -362,7 +377,7 @@ func getBusinessContext(ctx context.Context, q queryRower, userID, predicate, va
 		WHERE bm.user_id = $1 AND bm.status = 'ACTIVE' AND ` + predicate
 	err := q.QueryRow(ctx, query, userID, value).Scan(
 		&item.ID, &item.Code, &item.Name, &item.BusinessType, &item.Timezone, &item.Currency,
-		&item.Role, &locationCode, &locationName, &item.EnabledModules,
+		&item.Role, &item.LogoURL, &locationCode, &locationName, &item.EnabledModules,
 	)
 	if err != nil {
 		return app.BusinessContext{}, mapError(err)
