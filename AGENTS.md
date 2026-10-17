@@ -19,6 +19,16 @@ Instruksi ini berlaku untuk semua pekerjaan di repository backend.
 4. Jangan mengakses database langsung dari adapter AI, WhatsApp, atau integrasi. Semua melalui Core API.
 5. Jalankan proses backend jangka panjang melalui GNU Screen session bernama backend. Cek screen -ls terlebih dahulu dan jangan menghentikan session milik task lain.
 
+## Batas ukuran file
+
+Ketentuan ini bersifat praktis dan bertahap. Tidak diperbolehkan menambah file baru yang melebihi 500 baris. File lama yang sudah melebihi batas direfaktor ketika disentuh task, dan sisanya dicatat sebagai utang teknis.
+
+1. Satu file source code maksimal 500 baris.
+2. File yang sudah melebihi 500 baris wajib direfaktor ketika disentuh task, secara bertahap, mengikuti domain dan tanggung jawab. Pemecahan bukan sekadar memotong baris; helper yang dipakai beberapa modul harus diekstrak agar reusable.
+3. Refactor wajib mempertahankan perilaku: kontrak API, bentuk payload, error code, dan hasil perhitungan tidak boleh berubah hanya demi mengurangi ukuran file.
+4. Utang teknis yang tidak bisa diselesaikan dalam scope task dicatat di `docs/task_updates/` beserta pemilik task berikutnya. Refactor struktural backend adalah milik T16.
+5. Pengecualian: file generated atau vendored, dokumen schema referensi di `db/schema/`, dan file SQL migration. Pengecualian tidak berlaku untuk `.go`.
+
 ## Infrastruktur lokal
 
 1. **Gunakan container yang sudah ada di host: `itams_db` (PostgreSQL) dan `itams_redis` (Redis).** Jangan membuat container, volume, atau database PostgreSQL baru untuk development, test manual, atau QC.

@@ -100,6 +100,7 @@ type Business struct {
 	Timezone        string    `json:"timezone"`
 	Currency        string    `json:"currency"`
 	Role            string    `json:"role,omitempty"`
+	LogoURL         string    `json:"logo_url,omitempty"`
 	DefaultLocation *Location `json:"default_location,omitempty"`
 }
 
@@ -250,78 +251,6 @@ type NewProduct struct {
 	MinStock             string
 	IsStockTracked       bool
 	CategoryCode         string
-}
-
-type InventoryProduct struct {
-	ProductCode  string `json:"product_code"`
-	Name         string `json:"name"`
-	SKU          string `json:"sku,omitempty"`
-	UnitSymbol   string `json:"unit_symbol"`
-	Quantity     string `json:"quantity"`
-	MinStock     string `json:"min_stock"`
-	LocationCode string `json:"location_code"`
-	LocationName string `json:"location_name"`
-}
-
-type OpeningStock struct {
-	AdjustmentNumber string `json:"adjustment_number"`
-	ProductCode      string `json:"product_code"`
-	LocationCode     string `json:"location_code"`
-	Quantity         string `json:"quantity"`
-	CurrentQuantity  string `json:"current_quantity"`
-}
-
-type NewOpeningStock struct {
-	ProductCode  string
-	LocationCode string
-	Quantity     string
-	Reason       string
-}
-
-type StockMovement struct {
-	MovementType  string    `json:"movement_type"`
-	Direction     string    `json:"direction"`
-	Quantity      string    `json:"quantity"`
-	UnitSymbol    string    `json:"unit_symbol"`
-	ProductCode   string    `json:"product_code"`
-	ProductName   string    `json:"product_name"`
-	LocationCode  string    `json:"location_code"`
-	LocationName  string    `json:"location_name"`
-	Reason        string    `json:"reason,omitempty"`
-	OccurredAt    time.Time `json:"occurred_at"`
-	CreatedByName string    `json:"created_by_name,omitempty"`
-}
-
-type NewStockAdjustment struct {
-	LocationCode string                   `json:"location_code"`
-	Reason       string                   `json:"reason"`
-	Notes        string                   `json:"notes,omitempty"`
-	Items        []NewStockAdjustmentItem `json:"items"`
-}
-
-type NewStockAdjustmentItem struct {
-	ProductCode string `json:"product_code"`
-	Quantity    string `json:"quantity"`
-	UnitSymbol  string `json:"unit_symbol"`
-	Direction   string `json:"direction"`
-}
-
-type StockAdjustment struct {
-	AdjustmentNumber string                `json:"adjustment_number"`
-	LocationCode     string                `json:"location_code"`
-	Reason           string                `json:"reason"`
-	Status           string                `json:"status"`
-	Notes            string                `json:"notes,omitempty"`
-	AdjustmentDate   time.Time             `json:"adjustment_date"`
-	Items            []StockAdjustmentItem `json:"items"`
-}
-
-type StockAdjustmentItem struct {
-	ProductCode string `json:"product_code"`
-	ProductName string `json:"product_name"`
-	Quantity    string `json:"quantity"`
-	UnitSymbol  string `json:"unit_symbol"`
-	Direction   string `json:"direction"`
 }
 
 type Contact struct {

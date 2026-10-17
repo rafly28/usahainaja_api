@@ -19,8 +19,8 @@ type repositoryStub struct {
 	UpdateProductFunc           func(ctx context.Context, businessID, code string, input NewProduct) (Product, error)
 	DeleteProductFunc           func(ctx context.Context, businessID, code string) error
 	CreateOpeningStockFunc      func(ctx context.Context, businessID, userID string, input NewOpeningStock) (OpeningStock, error)
-	ListInventoryProductsFunc   func(ctx context.Context, businessID string) ([]InventoryProduct, error)
-	ListStockMovementsFunc      func(ctx context.Context, businessID string) ([]StockMovement, error)
+	ListInventoryProductsFunc   func(ctx context.Context, businessID string) ([]InventoryProduct, int, error)
+	ListStockMovementsFunc      func(ctx context.Context, businessID string) ([]StockMovement, int, error)
 	CreateStockAdjustmentFunc   func(ctx context.Context, businessID, userID string, input NewStockAdjustment) (StockAdjustment, error)
 	CompleteStockAdjustmentFunc func(ctx context.Context, businessID, userID, adjustmentNumber string) error
 	UpdateBusinessConfigFunc    func(ctx context.Context, businessID, userID, businessType string, modules []string) error
@@ -59,7 +59,7 @@ func (s *repositoryStub) SwitchBusiness(context.Context, string, string, string)
 	return BusinessContext{}, nil
 }
 
-func (s *repositoryStub) UpdateBusinessConfiguration(ctx context.Context, businessID, actorID, businessType string, modules []string) error {
+func (s *repositoryStub) UpdateBusinessConfiguration(ctx context.Context, businessID, actorID, businessType string, modules []string, logoURL *string) error {
 	if s.UpdateBusinessConfigFunc != nil {
 		return s.UpdateBusinessConfigFunc(ctx, businessID, actorID, businessType, modules)
 	}
@@ -158,14 +158,26 @@ func (s *repositoryStub) CreateOpeningStock(ctx context.Context, businessID, use
 	}
 	return OpeningStock{}, s.openingStockErr
 }
-func (r *repositoryStub) ListInventoryProducts(ctx context.Context, businessID string, search string) ([]InventoryProduct, error) {
+func (r *repositoryStub) ListInventoryProducts(ctx context.Context, businessID string, filter InventoryFilter) ([]InventoryProduct, int, error) {
 	if r.ListInventoryProductsFunc != nil {
 		return r.ListInventoryProductsFunc(ctx, businessID)
 	}
-	return []InventoryProduct{}, nil
+	return []InventoryProduct{}, 0, nil
 }
-func (s *repositoryStub) ListStockMovements(ctx context.Context, businessID string) ([]StockMovement, error) {
-	return s.ListStockMovementsFunc(ctx, businessID)
+func (s *repositoryStub) ListStockMovements(ctx context.Context, businessID string, filter StockMovementFilter) ([]StockMovement, int, error) {
+	if s.ListStockMovementsFunc != nil {
+		return s.ListStockMovementsFunc(ctx, businessID)
+	}
+	return []StockMovement{}, 0, nil
+}
+func (s *repositoryStub) ListStockAdjustments(ctx context.Context, businessID string, filter StockAdjustmentFilter) ([]StockAdjustment, int, error) {
+	return []StockAdjustment{}, 0, nil
+}
+func (s *repositoryStub) GetStockAdjustment(ctx context.Context, businessID, adjustmentNumber string) (StockAdjustment, error) {
+	return StockAdjustment{}, ErrNotFound
+}
+func (s *repositoryStub) CreateStockOpname(ctx context.Context, businessID, userID string, input NewStockOpname) (StockAdjustment, error) {
+	return StockAdjustment{}, nil
 }
 func (s *repositoryStub) CreateStockAdjustment(ctx context.Context, businessID, userID string, input NewStockAdjustment) (StockAdjustment, error) {
 	return s.CreateStockAdjustmentFunc(ctx, businessID, userID, input)
@@ -288,7 +300,8 @@ func TestOpeningStockConflictHasStableDomainError(t *testing.T) {
 	repo := &repositoryStub{openingStockErr: ErrConflict}
 	service := NewService(repo, time.Hour, bcrypt.MinCost)
 	_, err := service.CreateOpeningStock(context.Background(), Session{UserID: "user-id"}, "business-id", OpeningStockInput{
-		ProductCode: "PRD-000001", LocationCode: "LOC-DEFAULT", Quantity: "2.5",
+		LocationCode: "LOC-DEFAULT",
+		Items:        []OpeningStockItemInput{{ProductCode: "PRD-000001", Quantity: "2.5"}},
 	})
 	var appErr *Error
 	if !errors.As(err, &appErr) || appErr.Code != "OPENING_STOCK_ALREADY_RECORDED" {
