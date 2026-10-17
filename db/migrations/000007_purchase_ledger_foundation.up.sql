@@ -29,10 +29,14 @@ ALTER TABLE stock_movements ADD CONSTRAINT stock_movements_movement_type_check
 
 -- ---------------------------------------------------------------------------
 -- 2. Purchase lines carry ordered vs received quantities.
+--
+-- Columns are added without NOT NULL/CHECK first: on a table that already has
+-- rows, `ADD COLUMN ... NOT NULL DEFAULT 0 CHECK (quantity > 0)` is rejected
+-- because the backfilled default violates the new check. So: add -> backfill
+-- -> then enforce NOT NULL and the checks.
 -- ---------------------------------------------------------------------------
-ALTER TABLE purchase_items
-    ADD COLUMN ordered_quantity numeric(18,4) NOT NULL DEFAULT 0 CHECK (ordered_quantity > 0),
-    ADD COLUMN received_quantity numeric(18,4) NOT NULL DEFAULT 0 CHECK (received_quantity >= 0);
+ALTER TABLE purchase_items ADD COLUMN ordered_quantity numeric(18,4);
+ALTER TABLE purchase_items ADD COLUMN received_quantity numeric(18,4);
 
 -- Backfill: ordered = legacy quantity; items of already-COMPLETED purchases
 -- count as fully received, everything else as not yet received.
@@ -41,6 +45,17 @@ SET ordered_quantity = pi.quantity,
     received_quantity = CASE WHEN p.status = 'COMPLETED' THEN pi.quantity ELSE 0 END
 FROM purchases p
 WHERE p.business_id = pi.business_id AND p.id = pi.purchase_id;
+
+-- Every purchase line belongs to a purchase, so the UPDATE above covers all rows.
+DELETE FROM purchase_items WHERE ordered_quantity IS NULL;
+
+ALTER TABLE purchase_items
+    ALTER COLUMN ordered_quantity SET NOT NULL,
+    ALTER COLUMN received_quantity SET NOT NULL;
+
+ALTER TABLE purchase_items
+    ADD CONSTRAINT purchase_items_ordered_quantity_check CHECK (ordered_quantity > 0),
+    ADD CONSTRAINT purchase_items_received_quantity_check CHECK (received_quantity >= 0);
 
 -- Line numbers for receipt references (contract uses line_number, not item id).
 ALTER TABLE purchase_items ADD COLUMN line_number integer;
