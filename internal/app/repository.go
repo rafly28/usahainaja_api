@@ -38,10 +38,13 @@ type Repository interface {
 	UpdateProduct(ctx context.Context, businessID, code string, input NewProduct) (Product, error)
 	DeleteProduct(ctx context.Context, businessID, code, userID string) error
 
-	ListInventoryProducts(ctx context.Context, businessID string, search string) ([]InventoryProduct, error)
+	ListInventoryProducts(ctx context.Context, businessID string, filter InventoryFilter) ([]InventoryProduct, int, error)
 	CreateOpeningStock(ctx context.Context, businessID, userID string, input NewOpeningStock) (OpeningStock, error)
-	ListStockMovements(ctx context.Context, businessID string) ([]StockMovement, error)
+	ListStockMovements(ctx context.Context, businessID string, filter StockMovementFilter) ([]StockMovement, int, error)
+	ListStockAdjustments(ctx context.Context, businessID string, filter StockAdjustmentFilter) ([]StockAdjustment, int, error)
+	GetStockAdjustment(ctx context.Context, businessID, adjustmentNumber string) (StockAdjustment, error)
 	CreateStockAdjustment(ctx context.Context, businessID, userID string, input NewStockAdjustment) (StockAdjustment, error)
+	CreateStockOpname(ctx context.Context, businessID, userID string, input NewStockOpname) (StockAdjustment, error)
 	CompleteStockAdjustment(ctx context.Context, businessID, userID, adjustmentNumber string) error
 
 	ListContacts(context.Context, string) ([]Contact, error)

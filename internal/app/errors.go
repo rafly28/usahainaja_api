@@ -6,9 +6,12 @@ import (
 )
 
 var (
-	ErrConflict  = errors.New("repository conflict")
-	ErrNotFound  = errors.New("repository record not found")
-	ErrForbidden = errors.New("repository access forbidden")
+	ErrConflict          = errors.New("repository conflict")
+	ErrNotFound          = errors.New("repository record not found")
+	ErrForbidden         = errors.New("repository access forbidden")
+	ErrUnitConversion    = errors.New("unit conversion missing")
+	ErrInsufficientStock = errors.New("insufficient stock")
+	ErrNoStockDifference = errors.New("opname has no stock difference")
 )
 
 type Error struct {

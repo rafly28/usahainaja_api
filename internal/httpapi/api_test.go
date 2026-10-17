@@ -112,13 +112,22 @@ func (r *apiRepositoryStub) DeleteProduct(ctx context.Context, businessID, code,
 func (s *apiRepositoryStub) CreateOpeningStock(context.Context, string, string, app.NewOpeningStock) (app.OpeningStock, error) {
 	return app.OpeningStock{}, nil
 }
-func (r *apiRepositoryStub) ListInventoryProducts(ctx context.Context, businessID string, search string) ([]app.InventoryProduct, error) {
-	return nil, nil
+func (r *apiRepositoryStub) ListInventoryProducts(ctx context.Context, businessID string, filter app.InventoryFilter) ([]app.InventoryProduct, int, error) {
+	return nil, 0, nil
 }
-func (s *apiRepositoryStub) ListStockMovements(ctx context.Context, businessID string) ([]app.StockMovement, error) {
-	return nil, nil
+func (s *apiRepositoryStub) ListStockMovements(ctx context.Context, businessID string, filter app.StockMovementFilter) ([]app.StockMovement, int, error) {
+	return nil, 0, nil
+}
+func (s *apiRepositoryStub) ListStockAdjustments(ctx context.Context, businessID string, filter app.StockAdjustmentFilter) ([]app.StockAdjustment, int, error) {
+	return nil, 0, nil
+}
+func (s *apiRepositoryStub) GetStockAdjustment(ctx context.Context, businessID, adjustmentNumber string) (app.StockAdjustment, error) {
+	return app.StockAdjustment{}, nil
 }
 func (s *apiRepositoryStub) CreateStockAdjustment(ctx context.Context, businessID, userID string, input app.NewStockAdjustment) (app.StockAdjustment, error) {
+	return app.StockAdjustment{}, nil
+}
+func (s *apiRepositoryStub) CreateStockOpname(ctx context.Context, businessID, userID string, input app.NewStockOpname) (app.StockAdjustment, error) {
 	return app.StockAdjustment{}, nil
 }
 func (s *apiRepositoryStub) CompleteStockAdjustment(ctx context.Context, businessID, userID, adjustmentNumber string) error {
