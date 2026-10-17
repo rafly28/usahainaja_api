@@ -8,7 +8,7 @@ Instruksi ini berlaku untuk semua pekerjaan di repository backend.
 2. Sebelum mengubah file, cek branch dan working tree dengan git status --short --branch.
 3. Setiap task harus berada pada branch baru dari origin/main dengan format task/TXX-ringkasan atau feat/ringkasan. Tidak ada commit atau push langsung ke main.
 4. Bila terdapat WIP yang memang milik task tersebut di main, buat branch baru terlebih dahulu dengan git switch -c task/TXX-ringkasan. Perintah ini mempertahankan perubahan lokal. Jangan memakai reset, checkout, clean, atau membuang stash untuk memindahkan WIP tanpa persetujuan maintainer.
-5. Jika WIP tidak jelas pemiliknya, berhenti dan laporkan file tersebut; jangan menimpa, memformat massal, atau memasukkannya ke commit task sendiri.
+5. Jika WIP tidak jelas pemiliknya, berhenti dan laporkan file tersebut; jangan menimpa, memformat massal, atau memasukkannya ke commit task sendiri. Bila working tree sedang dipakai sesi lain, buat worktree terpisah dari `origin/main` untuk pekerjaanmu: `git worktree add /tmp/uja-<task> -b task/TXX-ringkasan origin/main`.
 6. Sebelum merge, sinkronkan branch task dengan origin/main, selesaikan konflik di branch task, dan buka pull request. Main hanya menerima PR dengan required checks hijau.
 
 ## Aturan implementasi
@@ -18,6 +18,15 @@ Instruksi ini berlaku untuk semua pekerjaan di repository backend.
 3. Mutasi uang, stok, dan status harus atomik, tenant-aware, teraudit, serta idempotent jika kontrak memerlukannya.
 4. Jangan mengakses database langsung dari adapter AI, WhatsApp, atau integrasi. Semua melalui Core API.
 5. Jalankan proses backend jangka panjang melalui GNU Screen session bernama backend. Cek screen -ls terlebih dahulu dan jangan menghentikan session milik task lain.
+
+## Infrastruktur lokal
+
+1. **Gunakan container yang sudah ada di host: `itams_db` (PostgreSQL) dan `itams_redis` (Redis).** Jangan membuat container, volume, atau database PostgreSQL baru untuk development, test manual, atau QC.
+2. Kredensial development yang dipakai: database `usahainaja`, user `usahainaja`, port `5432` dari host, Redis `127.0.0.1:6379`. Sesuaikan lewat Makefile, bukan dengan membuat infra baru.
+3. Jalankan seluruh environment development dengan `make dev` dari root workspace. Perintah itu menyalakan `itams_db`/`itams_redis` bila mati, lalu menjalankan backend dan frontend lewat GNU Screen tanpa build image.
+4. `make dev-compose` hanya untuk QC Container penuh saat image benar-benar perlu dibangun. Jangan jadikan mode development harian.
+5. Migration harus berhasil pada database yang **sudah berisi data**, bukan hanya database kosong. Hindari pola `ADD COLUMN ... NOT NULL DEFAULT x CHECK (...)` pada tabel berisi baris; gunakan urutan tambah kolomnullable, backfill, baru `SET NOT NULL` dan constraint. Verifikasi dengan `tests/integration` atau smoke test terhadap database lama, bukan selalu volume baru.
+6. Jangan menghapus atau me-reset `itams_db`/`itams_redis` tanpa persetujuan maintainer karena keduanya dipakai bersama proyek lain di mesin ini. `make dev-infra-stop` memang meminta konfirmasi.
 
 ## Sebelum handoff
 
